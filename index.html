@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TheraQ Quiz</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Fundo visual da aplicação -->
+    <div class="page-bg"></div>
+
+    <!-- Estrutura principal do app -->
+    <div class="app-shell">
+      <!-- Cabeçalho com marca e progresso -->
+      <header class="topbar">
+        <div class="brand-block">
+          <img class="brand-logo-image" src="logo-theraq.png" alt="TheraQ" />
+        </div>
+
+        <div class="topbar-actions">
+          <div class="accessibility-panel" aria-label="Ferramentas de acessibilidade">
+            <div class="accessibility-group">
+              <span class="accessibility-label">Tema</span>
+              <div class="segmented-control">
+                <button class="access-btn is-active" type="button" data-theme="dark">Escuro</button>
+                <button class="access-btn" type="button" data-theme="light">Claro</button>
+              </div>
+            </div>
+
+            <div class="accessibility-group">
+              <span class="accessibility-label">Texto</span>
+              <div class="icon-control">
+                <button class="access-btn compact" type="button" data-font="decrease" aria-label="Diminuir texto">A−</button>
+                <button class="access-btn compact" type="button" data-font="increase" aria-label="Aumentar texto">A+</button>
+              </div>
+            </div>
+
+            <div class="accessibility-group">
+              <span class="accessibility-label">Contraste</span>
+              <button class="access-btn" type="button" id="high-contrast-toggle">Alto contraste</button>
+            </div>
+
+            <div class="accessibility-group">
+              <span class="accessibility-label">Daltonismo</span>
+              <select id="daltonism-control" aria-label="Filtro de daltonismo">
+                <option value="none">Nenhum</option>
+                <option value="protanopia">Protanopia</option>
+                <option value="deuteranopia">Deuteranopia</option>
+                <option value="tritanopia">Tritanopia</option>
+              </select>
+            </div>
+
+            <div class="accessibility-group volume-group">
+              <span class="accessibility-label">Volume</span>
+              <input id="volume-control" type="range" min="0" max="1" step="0.05" value="0.7" aria-label="Controle de volume" />
+            </div>
+
+            <label class="toggle-row" for="reduced-motion-toggle">
+              <input id="reduced-motion-toggle" type="checkbox" />
+              <span>Reduzir animação</span>
+            </label>
+          </div>
+
+          <div class="status-pill" id="status-pill">
+            <span>Progresso</span>
+            <strong id="topbar-status">0 / 0</strong>
+          </div>
+        </div>
+      </header>
+
+      <!-- Conteúdo principal do quiz -->
+      <main class="main-layout">
+        <section class="quiz-panel">
+          <!-- Tela de início: entrada do nickname -->
+          <div class="screen screen-intro active">
+            <div class="intro-card">
+              <p class="eyebrow accent">BEM-VINDO</p>
+              <h2>Informe seu nickname</h2>
+
+              <div class="field-group">
+                <label class="input-label" for="player-name">Nickname</label>
+                <input id="player-name" type="text" placeholder="Digite seu nickname" />
+              </div>
+
+              <div class="field-group">
+                <label class="input-label" for="difficulty-select">Nível de dificuldade</label>
+                <select id="difficulty-select" aria-label="Selecione o nível de dificuldade">
+                  <option value="todas">Todas</option>
+                  <option value="facil">Fácil</option>
+                  <option value="medio" selected>Médio</option>
+                  <option value="dificil">Difícil</option>
+                </select>
+              </div>
+
+              <div class="button-stack single-button-stack">
+                <button class="primary-btn" id="start-quiz-btn" type="button">Começar quiz</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tela do quiz: pergunta e alternativas -->
+          <div class="screen screen-quiz">
+            <div class="question-layout">
+              <article class="question-card panel">
+                <h2 id="question-text">Pergunta</h2>
+
+                <div class="explanation-box hidden" id="explanation-box">
+                  <p class="label">Explicação da resposta</p>
+                  <p id="explanation-text"></p>
+                </div>
+              </article>
+
+              <aside class="options-panel panel">
+                <h3>Alternativas</h3>
+                <div id="answers-container"></div>
+                <button class="primary-btn confirm-btn" id="confirm-answer" type="button">Confirmar resposta</button>
+              </aside>
+            </div>
+          </div>
+
+          <!-- Tela final com resultado e ranking -->
+          <div class="screen screen-final">
+            <div class="final-card panel">
+              <p class="eyebrow accent">FIM DA SESSÃO</p>
+              <h2 id="final-title">Seu desempenho</h2>
+              <div class="score-box">
+                <span>Acertos</span>
+                <strong id="final-score">0</strong>
+              </div>
+
+              <div class="ranking-box">
+                <h3>Ranking da sessão</h3>
+                <ol id="final-ranking-list"></ol>
+              </div>
+
+              <button class="primary-btn" id="play-again" type="button">Jogar novamente</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Ranking lateral da sessão -->
+        <aside class="sidebar panel">
+          <div class="sidebar-header">
+            <p class="eyebrow accent" id="sidebar-label">RANKING</p>
+            <h3 id="sidebar-title">Melhores pontuações</h3>
+          </div>
+
+          <ol class="ranking-list" id="session-ranking-list"></ol>
+        </aside>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
