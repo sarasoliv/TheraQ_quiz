@@ -19,7 +19,7 @@ module.exports = async function handler(request, response) {
       FROM questoes q 
       JOIN opcao_questoes o ON o.id_opcao = q.opcao_id
       LEFT JOIN fonte f ON f.id = q.fonte_id 
-      ORDER BY q.id
+      ORDER BY RANDOM() LIMIT 10
     `;
 
     const { rows } = await pool.query(queryText);

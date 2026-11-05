@@ -54,7 +54,7 @@ const server = http.createServer(async (request, response) => {
         params.push(dificuldade);
       }
 
-      query += " ORDER BY q.id";
+      query += " ORDER BY RANDOM() LIMIT 10";
 
       const { rows } = await pool.query(query, params);
       return sendJson(response, 200, rows.map(q => ({
@@ -223,9 +223,9 @@ function serveFrontend(pathname, response) {
     "/index.html": "index.html",
     "/script.js": "script.js",
     "/styles.css": "styles.css",
-    "/logo-theraq.png": "logo-theraq.png",
-    "/acertou.mp3": "acertou.mp3",
-    "/errou.mp3": "errou.mp3"
+    "/img/logo-theraq.png": "img/logo-theraq.png",
+    "/sounds/acerto.mp3": "sounds/acerto.mp3",
+    "/sounds/errou.mp3": "sounds/errou.mp3"
   };
   const fileName = files[pathname];
 
@@ -236,9 +236,9 @@ function serveFrontend(pathname, response) {
     "index.html": "text/html; charset=utf-8",
     "script.js": "text/javascript; charset=utf-8",
     "styles.css": "text/css; charset=utf-8",
-    "logo-theraq.png": "image/png",
-    "acertou.mp3": "audio/mpeg",
-    "errou.mp3": "audio/mpeg"
+    "img/logo-theraq.png": "image/png",
+    "sounds/acerto.mp3": "audio/mpeg",
+    "sounds/errou.mp3": "audio/mpeg"
   };
 
   fs.readFile(filePath, (error, content) => {
