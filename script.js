@@ -50,20 +50,22 @@ async function carregarPerguntasDoBanco() {
     const resposta = await fetch(url);
     if (!resposta.ok) throw new Error('Erro ao carregar perguntas do banco.');
     const dados = await resposta.json();
-    questions = dados
-      .map((item) => ({
-        id: item.id,
-        question: item.enunciado,
-        options: item.alternativas,
-        correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta).toUpperCase()),
-        explanation: item.explicacao || `Fonte: ${item.referencia || 'material de referência'}.`,
-        difficulty: String(item.dificuldade_nivel || '').toLowerCase()
-      }))
-      .filter((item) => {
-        if (selectedDifficulty === 'todas') return item.question && item.options.length >= 2 && item.correctIndex >= 0;
-        const normalizedDifficulty = item.difficulty.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        return normalizedDifficulty === selectedDifficulty && item.question && item.options.length >= 2 && item.correctIndex >= 0;
-      });
+    questions = shuffleQuestions(
+      dados
+        .map((item) => ({
+          id: item.id,
+          question: item.enunciado,
+          options: item.alternativas,
+          correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta).toUpperCase()),
+          explanation: item.explicacao || `Fonte: ${item.referencia || 'material de referência'}.`,
+          difficulty: String(item.dificuldade_nivel || '').toLowerCase()
+        }))
+        .filter((item) => {
+          if (selectedDifficulty === 'todas') return item.question && item.options.length >= 2 && item.correctIndex >= 0;
+          const normalizedDifficulty = item.difficulty.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          return normalizedDifficulty === selectedDifficulty && item.question && item.options.length >= 2 && item.correctIndex >= 0;
+        })
+    ).slice(0, MAX_QUIZ_QUESTIONS);
 
     if (!questions.length) throw new Error('O banco não retornou perguntas válidas para a dificuldade selecionada.');
     els.startQuizButton.disabled = false;
@@ -90,12 +92,23 @@ const state = {
 };
 
 const answerAudio = {
-  correct: new Audio('acertou.mp3'),
-  wrong: new Audio('errou.mp3')
+  correct: new Audio('/sounds/acerto.mp3'),
+  wrong: new Audio('/sounds/errou.mp3')
 };
+
+const MAX_QUIZ_QUESTIONS = 10;
 
 function getSelectedDifficulty() {
   return els.difficultySelect?.value || 'medio';
+}
+
+function shuffleQuestions(items) {
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
 }
 
 function playAnswerSound(isCorrect) {
