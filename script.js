@@ -2,6 +2,7 @@
 // TheraQ - Configuração e elementos da interface
 // ==========================================================
 const RANKING_KEY = 'techq-rank';
+const { pickRandomQuestions, normalizeDifficulty } = window.TheraQQuizLogic || {};
 const els = {
   introScreen: document.querySelector('.screen-intro'),
   quizScreen: document.querySelector('.screen-quiz'),
@@ -50,22 +51,19 @@ async function carregarPerguntasDoBanco() {
     const resposta = await fetch(url);
     if (!resposta.ok) throw new Error('Erro ao carregar perguntas do banco.');
     const dados = await resposta.json();
-    questions = shuffleQuestions(
-      dados
-        .map((item) => ({
-          id: item.id,
-          question: item.enunciado,
-          options: item.alternativas,
-          correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta).toUpperCase()),
-          explanation: item.explicacao || `Fonte: ${item.referencia || 'material de referência'}.`,
-          difficulty: String(item.dificuldade_nivel || '').toLowerCase()
-        }))
-        .filter((item) => {
-          if (selectedDifficulty === 'todas') return item.question && item.options.length >= 2 && item.correctIndex >= 0;
-          const normalizedDifficulty = item.difficulty.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-          return normalizedDifficulty === selectedDifficulty && item.question && item.options.length >= 2 && item.correctIndex >= 0;
-        })
-    ).slice(0, MAX_QUIZ_QUESTIONS);
+
+    const availableQuestions = dados
+      .map((item) => ({
+        id: item.id,
+        question: item.enunciado,
+        options: item.alternativas,
+        correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta).toUpperCase()),
+        explanation: item.explicacao || `Fonte: ${item.referencia || 'material de referência'}.`,
+        difficulty: (item.dificuldade_nivel || '').toString().trim()
+      }))
+      .filter((item) => item.question && item.options.length >= 2 && item.correctIndex >= 0);
+
+    questions = pickRandomQuestions(availableQuestions, selectedDifficulty, MAX_QUIZ_QUESTIONS);
 
     if (!questions.length) throw new Error('O banco não retornou perguntas válidas para a dificuldade selecionada.');
     els.startQuizButton.disabled = false;
@@ -92,14 +90,14 @@ const state = {
 };
 
 const answerAudio = {
-  correct: new Audio('/sounds/acerto.mp3'),
-  wrong: new Audio('/sounds/errou.mp3')
+  correct: new Audio('./sounds/acerto.mp3'),
+  wrong: new Audio('./sounds/errou.mp3')
 };
 
 const MAX_QUIZ_QUESTIONS = 10;
 
 function getSelectedDifficulty() {
-  return els.difficultySelect?.value || 'medio';
+  return normalizeDifficulty(els.difficultySelect?.value || 'medio');
 }
 
 function shuffleQuestions(items) {
@@ -111,8 +109,14 @@ function shuffleQuestions(items) {
   return shuffled;
 }
 
+function getAudioVolume() {
+  const value = Number(els.volumeControl?.value ?? 0.7);
+  return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0.7;
+}
+
 function playAnswerSound(isCorrect) {
   const audio = isCorrect ? answerAudio.correct : answerAudio.wrong;
+  audio.volume = getAudioVolume();
   audio.currentTime = 0;
   audio.play().catch(() => {});
 }
@@ -433,6 +437,8 @@ function initializeAccessibilityControls() {
     const value = Number(event.target.value);
     event.target.style.setProperty('--volume', String(value));
     document.body.style.setProperty('--volume-level', value.toFixed(2));
+    answerAudio.correct.volume = value;
+    answerAudio.wrong.volume = value;
   });
 
   applyTheme('dark');

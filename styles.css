@@ -167,6 +167,16 @@ button, input { font: inherit; }
   background-repeat: repeat;
   background-size: 220px 180px;
   opacity: 0.9;
+  animation: matrix-scroll 20s linear infinite;
+}
+
+@keyframes matrix-scroll {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 220px 0;
+  }
 }
 
 body.theme-light .page-bg::before {
