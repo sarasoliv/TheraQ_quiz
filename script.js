@@ -27,7 +27,6 @@ const els = {
   fontButtons: document.querySelectorAll('[data-font]'),
   highContrastToggle: document.getElementById('high-contrast-toggle'),
   daltonismControl: document.getElementById('daltonism-control'),
-  reducedMotionToggle: document.getElementById('reduced-motion-toggle'),
   volumeControl: document.getElementById('volume-control')
 };
 
@@ -403,10 +402,6 @@ function initializeAccessibilityControls() {
     }
   };
 
-  const applyReducedMotion = (enabled) => {
-    body.classList.toggle('reduced-motion', enabled);
-  };
-
   els.themeButtons.forEach((button) => {
     button.addEventListener('click', () => applyTheme(button.dataset.theme));
   });
@@ -428,10 +423,6 @@ function initializeAccessibilityControls() {
     applyDaltonism(event.target.value);
   });
 
-  els.reducedMotionToggle.addEventListener('change', (event) => {
-    applyReducedMotion(event.target.checked);
-  });
-
   els.volumeControl.addEventListener('input', (event) => {
     const value = Number(event.target.value);
     event.target.style.setProperty('--volume', String(value));
@@ -443,7 +434,6 @@ function initializeAccessibilityControls() {
   applyTheme('dark');
   applyContrast(false);
   applyDaltonism('none');
-  applyReducedMotion(false);
 }
 
 showScreen('intro');
