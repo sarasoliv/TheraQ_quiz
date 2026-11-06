@@ -21,18 +21,25 @@
     const questions = Array.isArray(items) ? [...items] : [];
     const selectedDifficulty = normalizeDifficulty(difficulty);
 
-    const filtered = questions.filter((item) => {
-      const itemDifficulty = normalizeDifficulty(
-        item?.dificuldade_nivel || item?.difficulty || ''
-      );
-      return itemDifficulty === selectedDifficulty;
-    });
-
-    if (!selectedDifficulty || filtered.length < safeMax) {
+    if (!questions.length) {
       return [];
     }
 
-    const shuffled = [...filtered];
+    const filtered = selectedDifficulty
+      ? questions.filter((item) => {
+          const itemDifficulty = normalizeDifficulty(
+            item?.dificuldade_nivel || item?.difficulty || ''
+          );
+          return itemDifficulty === selectedDifficulty;
+        })
+      : questions;
+
+    const sourcePool = filtered.length >= safeMax ? filtered : questions;
+    if (sourcePool.length < safeMax) {
+      return [];
+    }
+
+    const shuffled = [...sourcePool];
     for (let index = shuffled.length - 1; index > 0; index -= 1) {
       const randomIndex = Math.floor(Math.random() * (index + 1));
       [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];

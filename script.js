@@ -44,7 +44,6 @@ async function carregarPerguntasDoBanco() {
   els.startQuizButton.textContent = 'Carregando perguntas...';
   try {
     const url = new URL('/api/perguntas', window.location.origin);
-    url.searchParams.set('dificuldade', selectedDifficulty);
 
     const resposta = await fetch(url);
     if (!resposta.ok) throw new Error('Erro ao carregar perguntas do banco.');
