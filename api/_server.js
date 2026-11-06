@@ -54,7 +54,7 @@ const server = http.createServer(async (request, response) => {
         params.push(dificuldade);
       }
 
-      query += " ORDER BY RANDOM()";
+      query += " ORDER BY RANDOM() LIMIT 10";
 
       const { rows } = await pool.query(query, params);
       return sendJson(response, 200, rows.map(q => ({
