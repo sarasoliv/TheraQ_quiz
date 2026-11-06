@@ -7,10 +7,10 @@ test('normaliza dificuldade em minúsculas sem acentos', () => {
   assert.equal(normalizeDifficulty('FÁCIL'), 'facil');
   assert.equal(normalizeDifficulty('Médio'), 'medio');
   assert.equal(normalizeDifficulty('Difícil'), 'dificil');
-  assert.equal(normalizeDifficulty('todas'), 'todas');
+  assert.equal(normalizeDifficulty('todas'), '');
 });
 
-test('seleciona no máximo 10 perguntas da dificuldade escolhida quando há material suficiente', () => {
+test('seleciona exatamente 10 perguntas da dificuldade escolhida quando há material suficiente', () => {
   const questions = Array.from({ length: 15 }, (_, index) => ({
     id: index + 1,
     difficulty: 'facil'
@@ -22,14 +22,13 @@ test('seleciona no máximo 10 perguntas da dificuldade escolhida quando há mate
   assert.ok(result.every((question) => question.difficulty === 'facil'));
 });
 
-test('mantém até 10 perguntas quando a dificuldade não foi escolhida', () => {
-  const questions = Array.from({ length: 15 }, (_, index) => ({
+test('não retorna menos de 10 perguntas quando a dificuldade não possui material suficiente', () => {
+  const questions = Array.from({ length: 9 }, (_, index) => ({
     id: index + 1,
-    difficulty: index % 2 === 0 ? 'facil' : 'medio'
+    difficulty: 'facil'
   }));
 
-  const result = pickRandomQuestions(questions, 'todas', 10);
+  const result = pickRandomQuestions(questions, 'facil', 10);
 
-  assert.equal(result.length, 10);
-  assert.equal(result.length, Math.min(questions.length, 10));
+  assert.equal(result.length, 0);
 });
