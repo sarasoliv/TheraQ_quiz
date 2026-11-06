@@ -1,53 +1,57 @@
-# Passos 1 a 3 — Contexto, minimundo e requisitos
-
-Marco M1. Copiem para `entregas/01-contexto.md`.
+# Marco M1 — Entregável: `entregas/01-contexto.md`
 
 ## 1. Introdução e contexto
 
-## Contexto 
+### Contexto
+O **TheraQ** é um projeto que tem como objetivo ensinar, de forma dinâmica e fácil, pessoas da área de tecnologia ou não, a partir do acidente do Therac-25 (ocorrido entre 1985 e 1987), sobre os perigos de confiar excessivamente em softwares sem mecanismos físicos de segurança, principalmente quando se trata de uma máquina que opera em prol da saúde.
 
-O TheraQ é um projeto que tem como objetivo ensinar, de forma dinâmica e fácil, as pessoas da área de tecnologia ou não, a partir do acidente do Therac-25, ocorrido entre os anos de 1985 e 1987, como é perigoso confiar excessivamente em softwares sem mecanismos físicos de segurança, principalmente quando se trata de uma máquina que opera em prol da saúde das pessoas.
+O quiz permite ao usuário personalizar a dificuldade das perguntas que irá responder (**fácil, médio ou difícil**). Independentemente da dificuldade escolhida, cada rodada será composta por **10 perguntas selecionadas de forma aleatória**, garantindo que cada usuário tenha uma experiência única a cada novo questionário iniciado. Cada pergunta terá 5 opções de resposta (de A a E), sendo apenas uma correta. As questões são escolhidas criteriosa e cuidadosamente em fontes confiáveis e armazenadas em um Banco de Dados, juntamente com seu texto, resposta correta, explicação e nível de dificuldade.
 
-O quiz tem como funções permitir que o usuário personalize a dificuldade das perguntas que irá responder, tendo que responder 10 perguntas independente da dificuldade escolhida. Cada pergunta terá cinco opções de resposta, de A a E a princípio, sendo apenas uma delas a correta. As questões são escolhidas a dedo em fontes confiáveis e armazenadas em um Banco de Dados, juntamente com a pergunta, sua respectiva resposta e seu nível de dificuldade.
+Também haverá um Banco de Dados destinado ao armazenamento do nome de usuário e da pontuação total de cada jogador por partida, permitindo a geração de um ranking geral organizado de forma decrescente (do jogador com maior pontuação para o de menor pontuação).
 
-Também haverá um Banco de Dados destinado ao armazenamento da pontuação total de cada jogador por partida, com as pontuações separadas por nível de dificuldade. A partir desses dados, será possível gerar um ranking, organizado do jogador com maior pontuação para o jogador com menor pontuação.
-
-## Escopo 
+### Escopo
 
 | O banco faz | O banco não faz |
-| --- | --- |
-| Armazena dados do usuário ao se cadastrarem | Exclui os dados de cadastro |
-| Bloqueia alteração das informações do perfil | Armazena credenciais de login |
-| Guarda as perguntas e respostas automaticamente | Guarda as respostas do quiz por tempo ilimitado |
-| Guarda a pontuação do usuário | Salva usernames iguais |
-| Ranqueia de forma decrescente a pontuação total do usuário | Armazena os dados de todas as questões de uma vez |
+| :--- | :--- |
+| Armazena dados do usuário ao se cadastrar | Exclui os dados de cadastro |
+| Armazena credenciais de login | Bloqueia alteração das informações do perfil |
+| Guarda a pontuação do usuário | Guarda as perguntas e respostas automaticamente no client |
+| Ranqueia de forma decrescente a pontuação total do usuário | Guarda as respostas do quiz por tempo ilimitado |
+| Armazena os dados de todas as questões cadastradas | Salva usernames iguais |
 
-| Usuário | O que faz | Acessos
-| --- | --- | --- |
-| Jogador | Responde às perguntas do quiz e personaliza a dificuldade que seu quiz terá| Acesso apenas a interface do quiz para jogar |
-| Desenvolvedor | Quem gerencia o servidor do quiz e faz atualizações conforme necessidade a partir de sugestões de usuários. | Acesso aos códigos por tras do quiz como o back-end e fornt-end |
-| Tester | Faz o teste de mesa virtual e reporta bugs. | Acesso a interface do quiz para jogar como um usuario comum mas tendo acesso a tabela de questoes e tabela em que mostra as respostas que os jogadores deram |
-| Analista de informações | Confere a veracidade das perguntas e respostas. | Acesso a tabela em que se é armazenado temporariamente as perguntas |
+### Papéis e Acessos do Sistema
+
+| Usuário | O que faz | Acessos |
+| :--- | :--- | :--- |
+| **Jogador** | Responde às perguntas do quiz e personaliza a dificuldade que seu quiz terá. | Acesso apenas à interface do quiz para jogar. |
+| **Desenvolvedor** | Gerencia o servidor do quiz e faz atualizações conforme a necessidade a partir de sugestões. | Acesso aos códigos do sistema (front-end e back-end). |
+| **Tester** | Faz o teste de mesa virtual e reporta bugs. | Acesso à interface do quiz, à tabela de questões e ao registro temporário das respostas dos jogadores. |
+| **Analista de informações** | Confere a veracidade das perguntas e respostas. | Acesso à tabela em que são armazenadas temporariamente as perguntas. |
+
+---
 
 ## 2. Minimundo
 
-Somos estudantes da área de tecnologia e gostaríamos que você criasse um quiz sobre o acidente do Therac-25, ocorrido entre os anos de 1985 e 1987. No quiz, quero que seja possível escolher a dificuldade e a quantidade de perguntas que o usuário deseja responder. As questões são escolhidas a dedo em fontes confiáveis e armazenadas em um banco de dados, evitando fontes suspeitas ou informações sem comprovação para reduzir a possibilidade de erros. Todas as perguntas deverão ter alternativas de A a E a princípio, contendo apenas uma resposta correta. Após o usuário selecionar e enviar sua resposta, deverá ser mostrada a resposta correta juntamente com uma explicação do motivo pelo qual ela está correta. Também quero um ranking para mostrar as pessoas que mais acertaram as perguntas, sem permitir o cadastro de usuários com o mesmo nome de usuário (username).
+Somos estudantes da área de tecnologia e gostaríamos de criar um quiz interativo sobre o acidente do Therac-25, ocorrido entre os anos de 1985 e 1987. No quiz, o usuário poderá personalizar o nível de dificuldade do seu desafio (fácil, médio ou difícil). Independentemente do nível escolhido, **o sistema distribuirá 10 perguntas de forma aleatória por rodada**, proporcionando uma experiência única e renovada a cada partida. As questões são selecionadas de fontes confiáveis e armazenadas em um banco de dados relacional para evitar informações incorretas. Todas as perguntas contarão com 5 alternativas (A a E) e apenas 1 resposta correta. Após selecionar e enviar a opção desejada, o usuário receberá imediatamente o feedback com o gabarito e uma explicação detalhada sobre a resposta.
 
-Gostaria que o quiz tivesse recursos de acessibilidade e sons para quando o usuário acertar ou errar, semelhantes aos utilizados em programas de perguntas e respostas, como o antigo jogo de perguntas do Silvio Santos. A interface deve ser intuitiva, permitindo que o usuário tenha clareza sobre o que está fazendo em cada etapa do quiz. Para o desenvolvimento do projeto, deverão ser utilizadas apenas as linguagens JavaScript (JS), C, HTML e CSS, sem a utilização de frameworks. O banco de dados deverá utilizar PostgreSQL como SGBD, sendo responsável pelo armazenamento das informações necessárias para o funcionamento do sistema, como usuários, perguntas, respostas, pontuações e ranking.
+O sistema também contará com um ranking geral em ordem decrescente de pontuação, não permitindo o cadastro de usuários com nomes de usuário (*usernames*) repetidos.
+
+A aplicação contará com recursos de acessibilidade e efeitos sonoros característicos ao acertar ou errar uma questão, inspirados em programas clássicos de perguntas e respostas (como o jogo do Silvio Santos). A interface deve ser clara e intuitiva em todas as etapas. Para o desenvolvimento do projeto, serão utilizadas estritamente as linguagens **JavaScript (JS)**, **C**, **HTML** e **CSS**, sem o uso de frameworks. O SGBD utilizado será o **PostgreSQL**, responsável pelo armazenamento de usuários, perguntas, respostas, pontuações e ranking.
+
+---
 
 ## 3. Requisitos e regras de negócio
 
 | Código | Texto do requisito | Tipo |
-| --- | --- | --- |
-| RA01 | O sistema permite ao usuário se cadastrar. | Requisito funcional |
-| RA02 | É feita uma somatória da pontuação ao final de cada desafio. | Requisito funcional |
-| RA03 | Ao finalizar o questionário, o sistema entrega a pontuação. | Requisito funcional |
-| RA04 | A resposta é apresentada logo após o usuário escolher sua opção à pergunta feita. | Requisito funcional |
-| RA05 | É possível selecionar o nível de dificuldade, sendo fácil, médio e difícil. | Requisito funcional |
-| RA06 | O sistema do quiz gera as perguntas automaticamente a cada novo questionário aberto. | Requisito não funcional |
-| RA07 | O sistema gera 10 perguntas a cada questionário iniciado. | Requisito não funcional |
-| RD01 | O sistema não armazena as perguntas das questões após encerrar o quiz. | Regra de negócios |
-| RD02 | O sistema gera as perguntas aleatoriamente baseada em fontes específicas. | Regra de negócios |
-| RD03 | O sistema possui recursos de acessibilidade. | Regra de negócios |
-| RD04 | O banco de dados guarda a pontuação e o nome do usuário que a fez. | Regra de negócios |
-| RD05 | O cadastro será feito através do nome de usuário. | Regra de negócios |
+| :--- | :--- | :--- |
+| **RA01** | O sistema permite ao usuário se cadastrar via *username*. | Requisito Funcional |
+| **RA02** | O sistema realiza a somatória da pontuação ao final de cada desafio. | Requisito Funcional |
+| **RA03** | Ao finalizar o questionário, o sistema exibe a pontuação final obtida. | Requisito Funcional |
+| **RA04** | A resposta correta e sua explicação são apresentadas logo após o usuário confirmar a opção escolhida. | Requisito Funcional |
+| **RA05** | O sistema permite selecionar o nível de dificuldade do questionário (Fácil, Médio ou Difícil). | Requisito Funcional |
+| **RA06** | O sistema seleciona e distribui 10 perguntas aleatoriamente a cada novo questionário iniciado, independente da dificuldade, garantindo uma experiência única por rodada. | Requisito Não Funcional |
+| **RA07** | O sistema possui recursos de acessibilidade e efeitos sonoros de acerto e erro. | Requisito Não Funcional |
+| **RD01** | O sistema não armazena o histórico das perguntas respondidas no client após o encerramento do quiz. | Regra de Negócio |
+| **RD02** | O sistema busca as perguntas aleatoriamente a partir do banco de dados alimentado por fontes confiáveis. | Regra de Negócio |
+| **RD03** | O banco de dados armazena o *username* do jogador e suas pontuações para composição do ranking. | Regra de Negócio |
+| **RD04** | O cadastro e a identificação do usuário serão feitos obrigatoriamente através de um *username* único (sem duplicidades). | Regra de Negócio |
