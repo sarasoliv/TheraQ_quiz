@@ -22,7 +22,19 @@ test('seleciona exatamente 10 perguntas da dificuldade escolhida quando há mate
   assert.ok(result.every((question) => question.difficulty === 'facil'));
 });
 
-test('não retorna menos de 10 perguntas quando a dificuldade não possui material suficiente', () => {
+test('faz fallback para o conjunto atual quando a dificuldade escolhida não tem material suficiente', () => {
+  const questions = Array.from({ length: 10 }, (_, index) => ({
+    id: index + 1,
+    difficulty: index < 3 ? 'facil' : 'medio'
+  }));
+
+  const result = pickRandomQuestions(questions, 'facil', 10);
+
+  assert.equal(result.length, 10);
+  assert.ok(result.every((question) => ['facil', 'medio'].includes(question.difficulty)));
+});
+
+test('não retorna menos de 10 perguntas quando a base atual não possui material suficiente', () => {
   const questions = Array.from({ length: 9 }, (_, index) => ({
     id: index + 1,
     difficulty: 'facil'
