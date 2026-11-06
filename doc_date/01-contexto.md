@@ -14,9 +14,9 @@ Também haverá um Banco de Dados destinado ao armazenamento do nome de usuário
 | O banco faz | O banco não faz |
 | :--- | :--- |
 | Armazena dados do usuário ao se cadastrar | Exclui os dados de cadastro |
-| Armazena credenciais de login | Bloqueia alteração das informações do perfil |
-| Guarda a pontuação do usuário | Guarda as perguntas e respostas automaticamente no client |
-| Ranqueia de forma decrescente a pontuação total do usuário | Guarda as respostas do quiz por tempo limitado |
+| Armazena credenciais de login | Guarda o Ranking por tempo limitado |
+| Guarda a pontuação do usuário | ---- |
+| Ranqueia de forma decrescente a pontuação total do usuário | Guarda as perguntas e respostas do quiz por tempo limitado |
 | Armazena os dados de todas as questões cadastradas | Salva usernames iguais |
 
 ### Papéis e Acessos do Sistema
@@ -25,7 +25,7 @@ Também haverá um Banco de Dados destinado ao armazenamento do nome de usuário
 | :--- | :--- | :--- |
 | **Jogador** | Responde às perguntas do quiz e personaliza a dificuldade que seu quiz terá. | Acesso apenas à interface do quiz para jogar. |
 | **Desenvolvedor** | Gerencia o servidor do quiz e faz atualizações conforme a necessidade a partir de sugestões. | Acesso aos códigos do sistema (front-end e back-end). |
-| **Tester** | Faz o teste de mesa virtual e reporta bugs. | Acesso à interface do quiz, à tabela de questões e ao registro temporário das respostas dos jogadores. |
+| **Tester** | Faz o teste de mesa virtual e reporta bugs. | Acesso à interface do quiz, à tabela de questões e ao registro das respostas dos jogadores. |
 | **Analista de informações** | Confere a veracidade das perguntas e respostas. | Acesso à tabela em que são armazenadas as perguntas. |
 
 ---
