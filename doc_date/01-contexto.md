@@ -8,7 +8,7 @@ Marco M1. Copiem para `entregas/01-contexto.md`.
 
 O TheraQ é um projeto que tem como objetivo ensinar, de forma dinâmica e fácil, as pessoas da área de tecnologia ou não, a partir do acidente do Therac-25, ocorrido entre os anos de 1985 e 1987, como é perigoso confiar excessivamente em softwares sem mecanismos físicos de segurança, principalmente quando se trata de uma máquina que opera em prol da saúde das pessoas.
 
-O quiz tem como funções permitir que o usuário personalize a dificuldade das perguntas que irá responder. Cada pergunta terá cinco opções de resposta, de A a E a princípio, sendo apenas uma delas a correta. As questões são escolhidas a dedo em fontes confiáveis e armazenadas em um Banco de Dados, juntamente com a pergunta, sua respectiva resposta e seu nível de dificuldade.
+O quiz tem como funções permitir que o usuário personalize a dificuldade das perguntas que irá responder, tendo que responder 10 perguntas independente da dificuldade escolhida. Cada pergunta terá cinco opções de resposta, de A a E a princípio, sendo apenas uma delas a correta. As questões são escolhidas a dedo em fontes confiáveis e armazenadas em um Banco de Dados, juntamente com a pergunta, sua respectiva resposta e seu nível de dificuldade.
 
 Também haverá um Banco de Dados destinado ao armazenamento da pontuação total de cada jogador por partida, com as pontuações separadas por nível de dificuldade. A partir desses dados, será possível gerar um ranking, organizado do jogador com maior pontuação para o jogador com menor pontuação.
 
