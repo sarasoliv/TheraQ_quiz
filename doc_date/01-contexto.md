@@ -16,7 +16,7 @@ Também haverá um Banco de Dados destinado ao armazenamento do nome de usuário
 | Armazena dados do usuário ao se cadastrar | Exclui os dados de cadastro |
 | Armazena credenciais de login | Bloqueia alteração das informações do perfil |
 | Guarda a pontuação do usuário | Guarda as perguntas e respostas automaticamente no client |
-| Ranqueia de forma decrescente a pontuação total do usuário | Guarda as respostas do quiz por tempo ilimitado |
+| Ranqueia de forma decrescente a pontuação total do usuário | Guarda as respostas do quiz por tempo limitado |
 | Armazena os dados de todas as questões cadastradas | Salva usernames iguais |
 
 ### Papéis e Acessos do Sistema
