@@ -26,7 +26,7 @@ Também haverá um Banco de Dados destinado ao armazenamento do nome de usuário
 | **Jogador** | Responde às perguntas do quiz e personaliza a dificuldade que seu quiz terá. | Acesso apenas à interface do quiz para jogar. |
 | **Desenvolvedor** | Gerencia o servidor do quiz e faz atualizações conforme a necessidade a partir de sugestões. | Acesso aos códigos do sistema (front-end e back-end). |
 | **Tester** | Faz o teste de mesa virtual e reporta bugs. | Acesso à interface do quiz, à tabela de questões e ao registro temporário das respostas dos jogadores. |
-| **Analista de informações** | Confere a veracidade das perguntas e respostas. | Acesso à tabela em que são armazenadas temporariamente as perguntas. |
+| **Analista de informações** | Confere a veracidade das perguntas e respostas. | Acesso à tabela em que são armazenadas as perguntas. |
 
 ---
 
