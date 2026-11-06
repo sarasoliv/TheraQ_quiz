@@ -1,6 +1,6 @@
 (function (globalScope) {
   function normalizeDifficulty(value) {
-    if (typeof value !== 'string') return 'todas';
+    if (typeof value !== 'string') return '';
 
     const normalized = value
       .trim()
@@ -9,10 +9,10 @@
       .toLowerCase()
       .replace(/\s+/g, '');
 
-    if (!normalized || normalized === 'todas') return 'todas';
-    if (normalized === 'facil' || normalized === 'facil') return 'facil';
-    if (['medio', 'media', 'medio'].includes(normalized)) return 'medio';
-    if (['dificil', 'dificil'].includes(normalized)) return 'dificil';
+    if (!normalized || normalized === 'todas') return '';
+    if (normalized === 'facil') return 'facil';
+    if (['medio', 'media'].includes(normalized)) return 'medio';
+    if (['dificil', 'difícil'].includes(normalized)) return 'dificil';
     return normalized;
   }
 
@@ -22,15 +22,14 @@
     const selectedDifficulty = normalizeDifficulty(difficulty);
 
     const filtered = questions.filter((item) => {
-      if (selectedDifficulty === 'todas') return true;
       const itemDifficulty = normalizeDifficulty(
         item?.dificuldade_nivel || item?.difficulty || ''
       );
       return itemDifficulty === selectedDifficulty;
     });
 
-    if (filtered.length <= safeMax) {
-      return filtered;
+    if (!selectedDifficulty || filtered.length < safeMax) {
+      return [];
     }
 
     const shuffled = [...filtered];

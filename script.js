@@ -44,9 +44,7 @@ async function carregarPerguntasDoBanco() {
   els.startQuizButton.textContent = 'Carregando perguntas...';
   try {
     const url = new URL('/api/perguntas', window.location.origin);
-    if (selectedDifficulty && selectedDifficulty !== 'todas') {
-      url.searchParams.set('dificuldade', selectedDifficulty);
-    }
+    url.searchParams.set('dificuldade', selectedDifficulty);
 
     const resposta = await fetch(url);
     if (!resposta.ok) throw new Error('Erro ao carregar perguntas do banco.');
@@ -65,7 +63,9 @@ async function carregarPerguntasDoBanco() {
 
     questions = pickRandomQuestions(availableQuestions, selectedDifficulty, MAX_QUIZ_QUESTIONS);
 
-    if (!questions.length) throw new Error('O banco não retornou perguntas válidas para a dificuldade selecionada.');
+    if (questions.length !== MAX_QUIZ_QUESTIONS) {
+      throw new Error(`A dificuldade selecionada precisa ter pelo menos ${MAX_QUIZ_QUESTIONS} perguntas para iniciar o quiz.`);
+    }
     els.startQuizButton.disabled = false;
     els.startQuizButton.textContent = 'Começar quiz';
     updateTopbar();
@@ -73,7 +73,7 @@ async function carregarPerguntasDoBanco() {
     console.error('Erro ao buscar perguntas:', erro);
     els.startQuizButton.textContent = 'Tentar carregar novamente';
     els.startQuizButton.disabled = false;
-    alert('Não foi possível carregar as perguntas do banco. Confira DATABASE_URL, execute schema.sql e selecione uma dificuldade válida.');
+    alert('A dificuldade selecionada precisa ter pelo menos 10 perguntas válidas no banco para iniciar o quiz.');
   }
 }
 window.addEventListener('DOMContentLoaded', carregarPerguntasDoBanco);
