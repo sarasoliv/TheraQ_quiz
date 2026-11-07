@@ -63,20 +63,42 @@ async function carregarPerguntasDoBanco() {
     }
 
     // Mapeia e normaliza os dados vindos da API
-    const availableQuestions = dados
-      .map((item) => ({
-        id: item.id,
-        question: item.enunciado,
-        options: item.alternativas,
-        correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta || '').toUpperCase()),
-        explanation: item.justificativa_resposta || item.explicacao || `Fonte: ${item.referencia || 'material de referência'}.`,
-        difficulty: String(item.dificuldade_nivel || '')
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .toLowerCase()
-          .trim()
-      }))
-      .filter((item) => item.question && item.options.length >= 2 && item.correctIndex >= 0);
+  const availableQuestions = dados
+  .map((item) => ({
+    id: item.id,
+    question: item.enunciado,
+    options: item.alternativas,
+
+    correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(
+      String(item.resposta_correta || '').toUpperCase().trim()
+    ),
+
+    // Justificativa exclusiva da resposta correta
+    explanation: item.justificativa_pergunta ||
+      "Justificativa não cadastrada para esta questão.",
+
+    // Fonte bibliográfica
+    source: item.referencia || "Fonte não cadastrada",
+    sourceUrl: item.fonte_url || null,
+
+    // Dificuldade normalizada para permitir a comparação
+    difficulty: String(item.dificuldade_nivel || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+  }))
+  .filter((item) =>
+    item.question &&
+    Array.isArray(item.options) &&
+    item.options.length >= 2 &&
+    item.correctIndex >= 0
+  );
+
+// Bloqueio: somente perguntas da dificuldade selecionada
+const perguntasDoNivelExato = availableQuestions.filter((item) => {
+  return item.difficulty === dificuldadeEscolhida;
+});
 
     // 🔒 BLOQUEIO ABSOLUTO: Garante de forma estrita que NENHUMA pergunta de outro nível passe
     const perguntasDoNivelExato = availableQuestions.filter((item) => {
