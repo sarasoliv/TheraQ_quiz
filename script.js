@@ -35,7 +35,7 @@ const els = {
 // ==========================================================
 let questions = [];
 
-// Função para buscar as perguntas do banco SQL assim que a página abrir
+// Função para buscar as perguntas do banco SQL assim que a página abrir ou a dificuldade mudar
 async function carregarPerguntasDoBanco() {
   const selectedDifficulty = getSelectedDifficulty();
 
@@ -59,7 +59,11 @@ async function carregarPerguntasDoBanco() {
       }))
       .filter((item) => item.question && item.options.length >= 2 && item.correctIndex >= 0);
 
-    questions = pickRandomQuestions(availableQuestions, selectedDifficulty, MAX_QUIZ_QUESTIONS);
+    const filteredByDifficulty = availableQuestions.filter(
+      (item) => normalizeDifficulty(item.difficulty) === selectedDifficulty
+    );
+
+    questions = pickRandomQuestions(filteredByDifficulty, selectedDifficulty, MAX_QUIZ_QUESTIONS);
 
     if (questions.length !== MAX_QUIZ_QUESTIONS) {
       throw new Error(`A dificuldade selecionada precisa ter pelo menos ${MAX_QUIZ_QUESTIONS} perguntas para iniciar o quiz.`);
