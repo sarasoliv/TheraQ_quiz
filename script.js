@@ -35,9 +35,9 @@ const els = {
 // ==========================================================
 let questions = [];
 
-// Função para buscar as perguntas do banco
+// Função para buscar as perguntas do banco de dados
 async function carregarPerguntasDoBanco() {
-  // Pega o valor selecionado no <select> de dificuldade ('facil', 'medio' ou 'dificil')
+  // Pega a dificuldade que o usuário escolheu no <select> ('facil', 'medio' ou 'dificil')
   const dificuldadeEscolhida = els.difficultySelect.value;
 
   els.startQuizButton.disabled = true;
@@ -46,59 +46,70 @@ async function carregarPerguntasDoBanco() {
   try {
     const resposta = await fetch('/api/perguntas');
     if (!resposta.ok) {
-      throw new Error('Erro na resposta do servidor.');
+      throw new Error('Erro ao buscar perguntas na API.');
     }
 
     const dados = await resposta.json();
 
-    // 1. Converte e limpa os dados do banco
-    const todasPerguntas = dados.map(function(item) {
+    // Transforma os dados vindos do banco para a estrutura que o quiz usa
+    const todasPerguntas = dados.map(function (item) {
+      // Monta a lista de opções a partir dos dados do banco
+      const alternativas = item.alternativas || [
+        item.opcao_a,
+        item.opcao_b,
+        item.opcao_c,
+        item.opcao_d,
+        item.opcao_e
+      ];
+
+      // Descobre o índice da resposta correta ('A' -> 0, 'B' -> 1, etc)
+      const indiceCorreto = ['A', 'B', 'C', 'D', 'E'].indexOf(
+        String(item.resposta_correta).toUpperCase()
+      );
+
       return {
         id: item.id,
         question: item.enunciado,
-        options: item.alternativas,
-        correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta).toUpperCase()),
-        explanation: item.explicacao || 'Sem explicação disponível.',
-        difficulty: item.dificuldade_nivel || item.difficulty
+        options: alternativas,
+        correctIndex: indiceCorreto,
+        explanation: item.justificativa_resposta || item.explicacao || 'Sem explicação disponível.',
+        difficulty: item.dificuldade_nivel
       };
     });
 
-    // 2. Filtra ESTREITAMENTE apenas as perguntas da dificuldade escolhida pelo usuário
-    const perguntasFiltradas = todasPerguntas.filter(function(item) {
+    // Filtra no frontend garantindo que só fiquem as perguntas da dificuldade escolhida
+    const perguntasDaDificuldade = todasPerguntas.filter(function (item) {
       return item.difficulty === dificuldadeEscolhida;
     });
 
-    // 3. Valida se existem pelo menos 10 perguntas dessa dificuldade
-    if (perguntasFiltradas.length < 10) {
-      alert('A dificuldade selecionada precisa ter pelo menos 10 perguntas no banco.');
+    // Usa a função do arquivo quiz-logic.js para validar, embaralhar e pegar 10 perguntas
+    questions = window.TheraQQuizLogic.pickRandomQuestions(
+      perguntasDaDificuldade,
+      dificuldadeEscolhida,
+      10
+    );
+
+    // Se o retorno for menor que 10, exibe o aviso
+    if (questions.length < 10) {
+      alert('A dificuldade selecionada precisa ter pelo menos 10 perguntas válidas no banco.');
       els.startQuizButton.textContent = 'Tentar carregar novamente';
       els.startQuizButton.disabled = false;
       return;
     }
 
-    // 4. Embaralha as perguntas filtradas
-    perguntasFiltradas.sort(function() {
-      return Math.random() - 0.5;
-    });
-
-    // 5. Pega exatamente 10 perguntas embaralhadas
-    questions = perguntasFiltradas.slice(0, 10);
-
     els.startQuizButton.disabled = false;
     els.startQuizButton.textContent = 'Começar quiz';
     updateTopbar();
-
   } catch (erro) {
-    console.error('Erro ao buscar perguntas:', erro);
+    console.error('Erro ao carregar perguntas:', erro);
     els.startQuizButton.textContent = 'Tentar carregar novamente';
     els.startQuizButton.disabled = false;
     alert('Erro ao carregar as perguntas do banco de dados.');
   }
 }
 
-// Recarrega as perguntas quando a página abre ou quando o usuário muda a dificuldade no select
+// Carrega as perguntas assim que a tela abre
 window.addEventListener('DOMContentLoaded', carregarPerguntasDoBanco);
-els.difficultySelect.addEventListener('change', carregarPerguntasDoBanco);
 // ==========================================================
 // Estado atual da partida
 // ==========================================================
