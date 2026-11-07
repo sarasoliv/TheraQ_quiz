@@ -52,10 +52,20 @@ if (request.method === "GET" && requestUrl.pathname === "/api/perguntas") {
       const baseParams = [];
       let whereClause = "";
 
+      // Filtro SQL estrito que remove acentos e compara perfeitamente (facil, medio, dificil)
       if (dificuldade) {
         whereClause = ` WHERE translate(lower(trim(q.dificuldade_nivel)), 'áéíóúãõâêîôûàèìòùç', 'aeiouaoaeiouaeiouc') = translate(lower(trim($1)), 'áéíóúãõâêîôûàèìòùç', 'aeiouaoaeiouaeiouc')`;
         baseParams.push(dificuldade);
       }
+
+      const filteredQuery = `${baseQuery}${whereClause} ORDER BY RANDOM()`;
+      const { rows: filteredRows } = await pool.query(filteredQuery, baseParams);
+
+      return sendJson(response, 200, filteredRows.map(q => ({
+        ...q,
+        alternativas: [q.opcao_a, q.opcao_b, q.opcao_c, q.opcao_d, q.opcao_e]
+      })));
+    }
 
       const filteredQuery = `${baseQuery}${whereClause} ORDER BY RANDOM()`;
       const { rows: filteredRows } = await pool.query(filteredQuery, baseParams);
