@@ -62,56 +62,42 @@ async function carregarPerguntasDoBanco() {
       throw new Error(`Nenhuma pergunta encontrada para o nível "${dificuldadeEscolhida}".`);
     }
 
-    // Mapeia os dados garantindo que TODAS as perguntas recebidas do servidor sejam lidas
+    // Mapeia e normaliza os dados vindos da API
     const availableQuestions = dados
-      .map((item) => {
-        // Força a leitura da dificuldade do banco, se vier vazia assume a escolhida para não perder nenhuma
-        const rawItemDiff = item.dificuldade_nivel || dificuldadeEscolhida;
-        const normalizedDiff = String(rawItemDiff)
+      .map((item) => ({
+        id: item.id,
+        question: item.enunciado,
+        options: item.alternativas,
+        correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta || '').toUpperCase()),
+        explanation: item.justificativa_resposta || item.explicacao || `Fonte: ${item.referencia || 'material de referência'}.`,
+        difficulty: String(item.dificuldade_nivel || '')
           .normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '')
           .toLowerCase()
-          .trim();
-
-        return {
-          id: item.id,
-          question: item.enunciado,
-          options: item.alternativas,
-          correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta || '').toUpperCase()),
-          explanation: item.justificativa_resposta || item.explicacao || `Fonte: ${item.referencia || 'material de referência'}.`,
-          difficulty: normalizedDiff
-        };
-      })
+          .trim()
+      }))
       .filter((item) => item.question && item.options.length >= 2 && item.correctIndex >= 0);
 
-    // Filtro inteligente e flexível que agrupa corretamente o nível correspondente
+    // 🔒 BLOQUEIO ABSOLUTO: Garante de forma estrita que NENHUMA pergunta de outro nível passe
     const perguntasDoNivelExato = availableQuestions.filter((item) => {
-      if (dificuldadeEscolhida.includes('med')) {
-        return item.difficulty.includes('med');
-      }
-      if (dificuldadeEscolhida.includes('dif')) {
-        return item.difficulty.includes('dif');
-      }
-      return item.difficulty.includes('fac') || item.difficulty === '';
+      return item.difficulty === dificuldadeEscolhida;
     });
 
-    // Se por acaso o array filtrado ficar abaixo de 10, forçamos aceitar o bloco inteiro retornado pela API para nunca travar
-    const listaFinalParaSortear = perguntasDoNivelExato.length >= 10 ? perguntasDoNivelExato : availableQuestions;
-
-    if (listaFinalParaSortear.length < 10) {
-      throw new Error(`O nível "${dificuldadeEscolhida}" possui apenas ${listaFinalParaSortear.length} perguntas válidas. São necessárias pelo menos 10.`);
+    // Valida se o bloco atual tem o mínimo necessário (exatamente 10 perguntas)
+    if (perguntasDoNivelExato.length < 10) {
+      throw new Error(`O nível "${dificuldadeEscolhida}" possui apenas ${perguntasDoNivelExato.length} perguntas válidas. São necessárias pelo menos 10.`);
     }
 
-    // Sorteia exatamente 10 perguntas únicas e exclusivas do respectivo nível
+    // Sorteia estritamente 10 perguntas únicas e exclusivas do respectivo nível
     questions = window.TheraQQuizLogic?.pickRandomQuestions
-      ? window.TheraQQuizLogic.pickRandomQuestions(listaFinalParaSortear, 10)
-      : listaFinalParaSortear.sort(() => Math.random() - 0.5).slice(0, 10);
+      ? window.TheraQQuizLogic.pickRandomQuestions(perguntasDoNivelExato, 10)
+      : perguntasDoNivelExato.sort(() => Math.random() - 0.5).slice(0, 10);
 
     els.startQuizButton.disabled = false;
     els.startQuizButton.textContent = 'Começar quiz';
     updateTopbar();
   } catch (erro) {
-    console.error('Erros ao buscar perguntas:', erro);
+    console.error('Erro ao buscar perguntas:', erro);
     els.startQuizButton.textContent = 'Tentar carregar novamente';
     els.startQuizButton.disabled = false;
     questions = [];
