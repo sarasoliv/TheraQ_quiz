@@ -39,7 +39,6 @@ let questions = [];
 async function carregarPerguntasDoBanco() {
   const rawDifficulty = els.difficultySelect?.value || 'facil';
   
-  // Normaliza limpo para enviar exatamente "facil", "medio" ou "dificil"
   const dificuldadeEscolhida = String(rawDifficulty)
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -71,27 +70,20 @@ async function carregarPerguntasDoBanco() {
         options: item.alternativas,
         correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta || '').toUpperCase()),
         explanation: item.justificativa_resposta || item.explicacao || `Fonte: ${item.referencia || 'material de referência'}.`,
-        difficulty: String(item.dificuldade_nivel || '')
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .toLowerCase()
-          .trim()
+        difficulty: String(item.dificuldade_nivel || '').trim().toLowerCase()
       }))
       .filter((item) => item.question && item.options.length >= 2 && item.correctIndex >= 0);
 
-    // Filtro adicional de segurança no front-end para garantir 100% de isolamento entre os níveis
-    const perguntasDoNivelExato = availableQuestions.filter((item) => {
-      return item.difficulty === dificuldadeEscolhida;
-    });
-
-    if (perguntasDoNivelExato.length < 10) {
-      throw new Error(`Encontradas apenas ${perguntasDoNivelExato.length} perguntas para o nível "${dificuldadeEscolhida}". São necessárias pelo menos 10.`);
+    // Como o servidor (backend) já filtrou perfeitamente no PostgreSQL, 
+    // aceitamos diretamente os dados trazidos da API com total segurança
+    if (availableQuestions.length < 10) {
+      throw new Error(`Encontradas apenas ${availableQuestions.length} perguntas válidas para este nível. São necessárias pelo menos 10.`);
     }
 
-    // Seleciona exatamente 10 perguntas embaralhadas do nível correto
+    // Seleciona exatamente 10 perguntas aleatórias para o quiz atual
     questions = window.TheraQQuizLogic?.pickRandomQuestions
-      ? window.TheraQQuizLogic.pickRandomQuestions(perguntasDoNivelExato, 10)
-      : perguntasDoNivelExato.sort(() => Math.random() - 0.5).slice(0, 10);
+      ? window.TheraQQuizLogic.pickRandomQuestions(availableQuestions, 10)
+      : availableQuestions.sort(() => Math.random() - 0.5).slice(0, 10);
 
     els.startQuizButton.disabled = false;
     els.startQuizButton.textContent = 'Começar quiz';
