@@ -1,51 +1,30 @@
 (function (globalScope) {
-  function normalizeDifficulty(value) {
-    if (typeof value !== 'string') return '';
 
-    const normalized = value
-      .trim()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .replace(/\s+/g, '');
-
-    if (!normalized || normalized === 'todas') return '';
-    if (normalized.includes('facil')) return 'facil';
-    if (normalized.includes('med') || normalized.includes('medio')) return 'medio';
-    if (normalized.includes('dif') || normalized.includes('dificil')) return 'dificil';
-    return normalized;
-  }
-
-  function pickRandomQuestions(items, difficulty, maxQuestions = 10) {
-    const safeMax = Number.isInteger(maxQuestions) && maxQuestions > 0 ? maxQuestions : 10;
-    const questions = Array.isArray(items) ? [...items] : [];
-    const selectedDifficulty = normalizeDifficulty(difficulty);
-
-    if (!questions.length || !selectedDifficulty) {
-      return [];
-    }
-
-    const filtered = questions.filter((item) => {
-      const itemDifficulty = normalizeDifficulty(
-        item?.dificuldade_nivel || item?.difficulty || ''
-      );
-      return itemDifficulty === selectedDifficulty;
+  // Função simples para filtrar e embaralhar 10 perguntas
+  function pickRandomQuestions(listaPerguntas, dificuldadeDesejada) {
+    // Filtra estritamente pela dificuldade igual à escolhida
+    const filtradas = listaPerguntas.filter(function(item) {
+      const dif = item.dificuldade_nivel || item.difficulty;
+      return dif === dificuldadeDesejada;
     });
 
-    if (filtered.length < safeMax) {
+    // Se tiver menos de 10, retorna array vazio
+    if (filtradas.length < 10) {
       return [];
     }
 
-    const shuffled = [...filtered];
-    for (let index = shuffled.length - 1; index > 0; index -= 1) {
-      const randomIndex = Math.floor(Math.random() * (index + 1));
-      [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
-    }
+    // Embaralha usando Math.random()
+    filtradas.sort(function() {
+      return Math.random() - 0.5;
+    });
 
-    return shuffled.slice(0, safeMax);
+    // Retorna exatamente 10 perguntas
+    return filtradas.slice(0, 10);
   }
 
-  const api = { normalizeDifficulty, pickRandomQuestions };
+  const api = {
+    pickRandomQuestions: pickRandomQuestions
+  };
 
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = api;
