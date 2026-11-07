@@ -35,52 +35,27 @@ const server = http.createServer(async (request, response) => {
       );
       return sendJson(response, 200, rows);
     }
-if (request.method === "GET" && requestUrl.pathname === "/api/perguntas") {
+    if (request.method === "GET" && requestUrl.pathname === "/api/perguntas") {
       if (!pool) return sendJson(response, 503, { error: "Configure DATABASE_URL no arquivo api/.env." });
-      
+
       const paramDificuldade = requestUrl.searchParams.get("dificuldade") || "facil";
       const dificuldade = normalizarDificuldade(paramDificuldade);
 
-      // Busca estrita e exclusiva do nível solicitado no banco, sem nenhum fallback
       const query = `
         SELECT q.id, q.enunciado, q.resposta_correta, q.dificuldade_nivel,
                f.referencia, o.opcao_a, o.opcao_b, o.opcao_c, o.opcao_d, o.opcao_e
         FROM questoes q
         JOIN opcao_questoes o ON o.id_opcao = q.opcao_id
         LEFT JOIN fonte f ON f.id = q.fonte_id
-        WHERE translate(lower(trim(q.dificuldade_nivel)), 'áéíóúãõâêîôûàèìòùç', 'aeiouaoaeiouaeiouc') = translate(lower(trim($1)), 'áéíóúãõâêîôûàèìòùç', 'aeiouaoaeiouaeiouc')
+        WHERE translate(lower(trim(q.dificuldade_nivel)), 'áéíóúãõâêîôûàèìòùç', 'aeiouaoaeiouaeiouc') =
+              translate(lower(trim($1)), 'áéíóúãõâêîôûàèìòùç', 'aeiouaoaeiouaeiouc')
         ORDER BY RANDOM()
+        LIMIT $2
       `;
 
-      const { rows } = await pool.query(query, [dificuldade]);
+      const { rows } = await pool.query(query, [dificuldade, maximumQuestionCount]);
 
       return sendJson(response, 200, rows.map(q => ({
-        ...q,
-        alternativas: [q.opcao_a, q.opcao_b, q.opcao_c, q.opcao_d, q.opcao_e]
-      })));
-    }
-
-      const filteredQuery = `${baseQuery}${whereClause} ORDER BY RANDOM()`;
-      const { rows: filteredRows } = await pool.query(filteredQuery, baseParams);
-
-      return sendJson(response, 200, filteredRows.map(q => ({
-        ...q,
-        alternativas: [q.opcao_a, q.opcao_b, q.opcao_c, q.opcao_d, q.opcao_e]
-      })));
-    }
-
-      const filteredQuery = `${baseQuery}${whereClause} ORDER BY RANDOM()`;
-      const { rows: filteredRows } = await pool.query(filteredQuery, baseParams);
-
-      return sendJson(response, 200, filteredRows.map(q => ({
-        ...q,
-        alternativas: [q.opcao_a, q.opcao_b, q.opcao_c, q.opcao_d, q.opcao_e]
-      })));
-    }
-    
-      const fallbackQuery = `${baseQuery} ORDER BY RANDOM() LIMIT ${maximumQuestionCount}`;
-      const { rows: fallbackRows } = await pool.query(fallbackQuery, []);
-      return sendJson(response, 200, fallbackRows.map(q => ({
         ...q,
         alternativas: [q.opcao_a, q.opcao_b, q.opcao_c, q.opcao_d, q.opcao_e]
       })));
