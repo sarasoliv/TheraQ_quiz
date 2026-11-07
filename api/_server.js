@@ -35,10 +35,11 @@ const server = http.createServer(async (request, response) => {
       );
       return sendJson(response, 200, rows);
     }
-
-    if (request.method === "GET" && requestUrl.pathname === "/api/perguntas") {
+if (request.method === "GET" && requestUrl.pathname === "/api/perguntas") {
       if (!pool) return sendJson(response, 503, { error: "Configure DATABASE_URL no arquivo api/.env." });
-      const dificuldade = normalizarDificuldade(requestUrl.searchParams.get("dificuldade"));
+      
+      const paramDificuldade = requestUrl.searchParams.get("dificuldade") || "";
+      const dificuldade = normalizarDificuldade(paramDificuldade);
 
       let baseQuery = `
         SELECT q.id, q.enunciado, q.resposta_correta, q.dificuldade_nivel,
@@ -52,20 +53,19 @@ const server = http.createServer(async (request, response) => {
       let whereClause = "";
 
       if (dificuldade) {
-        whereClause = " WHERE lower(trim(q.dificuldade_nivel)) = lower($1)";
+        whereClause = ` WHERE translate(lower(trim(q.dificuldade_nivel)), 'áéíóúãõâêîôûàèìòùç', 'aeiouaoaeiouaeiouc') = translate(lower(trim($1)), 'áéíóúãõâêîôûàèìòùç', 'aeiouaoaeiouaeiouc')`;
         baseParams.push(dificuldade);
       }
 
-      const filteredQuery = `${baseQuery}${whereClause} ORDER BY RANDOM() LIMIT ${maximumQuestionCount}`;
+      const filteredQuery = `${baseQuery}${whereClause} ORDER BY RANDOM()`;
       const { rows: filteredRows } = await pool.query(filteredQuery, baseParams);
 
-      if (filteredRows.length >= maximumQuestionCount) {
-        return sendJson(response, 200, filteredRows.map(q => ({
-          ...q,
-          alternativas: [q.opcao_a, q.opcao_b, q.opcao_c, q.opcao_d, q.opcao_e]
-        })));
-      }
-
+      return sendJson(response, 200, filteredRows.map(q => ({
+        ...q,
+        alternativas: [q.opcao_a, q.opcao_b, q.opcao_c, q.opcao_d, q.opcao_e]
+      })));
+    }
+    
       const fallbackQuery = `${baseQuery} ORDER BY RANDOM() LIMIT ${maximumQuestionCount}`;
       const { rows: fallbackRows } = await pool.query(fallbackQuery, []);
       return sendJson(response, 200, fallbackRows.map(q => ({
