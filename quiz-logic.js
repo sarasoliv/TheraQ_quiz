@@ -1,22 +1,4 @@
-(function (globalScope) {
-  function normalizeDifficulty(value) {
-    if (typeof value !== 'string') return '';
-
-    const normalized = value
-      .trim()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .replace(/\s+/g, '');
-
-    if (!normalized || normalized === 'todas') return '';
-    if (normalized === 'facil') return 'facil';
-    if (['medio', 'media'].includes(normalized)) return 'medio';
-    if (['dificil', 'difícil'].includes(normalized)) return 'dificil';
-    return normalized;
-  }
-
-  function pickRandomQuestions(items, difficulty, maxQuestions = 10) {
+function pickRandomQuestions(items, difficulty, maxQuestions = 10) {
     const safeMax = Number.isInteger(maxQuestions) && maxQuestions > 0 ? maxQuestions : 10;
     const questions = Array.isArray(items) ? [...items] : [];
     const selectedDifficulty = normalizeDifficulty(difficulty);
@@ -32,6 +14,7 @@
       return itemDifficulty === selectedDifficulty;
     });
 
+    // Permitir exatamente ou mais que o limite desejado
     if (filtered.length < safeMax) {
       return [];
     }
@@ -44,12 +27,3 @@
 
     return shuffled.slice(0, safeMax);
   }
-
-  const api = { normalizeDifficulty, pickRandomQuestions };
-
-  if (typeof module !== 'undefined' && module.exports) {
-    module.exports = api;
-  }
-
-  globalScope.TheraQQuizLogic = api;
-})(typeof window !== 'undefined' ? window : globalThis);
