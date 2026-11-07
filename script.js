@@ -35,65 +35,38 @@ const els = {
 // ==========================================================
 let questions = [];
 
-// Função para buscar as perguntas do banco SQL enviando a dificuldade selecionada
-async function carregarPerguntasDoBanco() {
-  const dificuldadeEscolhida = (els.difficultySelect?.value || 'facil')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
+if (request.method === "GET" && requestUrl.pathname === "/api/perguntas") {
+      if (!pool) return sendJson(response, 503, { error: "Configure DATABASE_URL no arquivo api/.env." });
+      
+      const dificuldade = normalizarDificuldade(requestUrl.searchParams.get("dificuldade"));
 
-  els.startQuizButton.disabled = true;
-  els.startQuizButton.textContent = 'Carregando perguntas...';
-  
-  // Zera explicitamente o array global para não acumular dados anteriores ao trocar de nível
-  questions = [];
+      let baseQuery = `
+        SELECT q.id, q.enunciado, q.resposta_correta, q.dificuldade_nivel,
+               f.referencia, o.opcao_a, o.opcao_b, o.opcao_c, o.opcao_d, o.opcao_e
+        FROM questoes q
+        JOIN opcao_questoes o ON o.id_opcao = q.opcao_id
+        LEFT JOIN fonte f ON f.id = q.fonte_id
+      `;
 
-  try {
-    const url = new URL('/api/perguntas', window.location.origin);
-    url.searchParams.set('dificuldade', dificuldadeEscolhida);
+      const baseParams = [];
+      let whereClause = "";
 
-    const resposta = await fetch(url);
-    if (!resposta.ok) throw new Error('Erro ao carregar perguntas do banco.');
-    
-    const dados = await resposta.json();
+      // Filtro estrito obrigatório baseado na dificuldade enviada
+      if (dificuldade) {
+        whereClause = " WHERE lower(trim(q.dificuldade_nivel)) = lower($1)";
+        baseParams.push(dificuldade);
+      }
 
-    if (!Array.isArray(dados) || dados.length === 0) {
-      throw new Error('Nenhuma pergunta encontrada no banco de dados.');
+      // Removemos o LIMIT fixo do banco para pegarmos TODAS as perguntas daquele nível de uma vez
+      const filteredQuery = `${baseQuery}${whereClause} ORDER BY RANDOM()`;
+      const { rows: filteredRows } = await pool.query(filteredQuery, baseParams);
+
+      // Retorna exatamente todas as perguntas encontradas daquele nível para o front-end filtrar e sortear
+      return sendJson(response, 200, filteredRows.map(q => ({
+        ...q,
+        alternativas: [q.opcao_a, q.opcao_b, q.opcao_c, q.opcao_d, q.opcao_e]
+      })));
     }
-
-    const availableQuestions = dados
-      .map((item) => ({
-        id: item.id,
-        question: item.enunciado,
-        options: item.alternativas,
-        correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta || '').toUpperCase()),
-        explanation: item.justificativa_resposta || item.explicacao || `Fonte: ${item.referencia || 'material de referência'}.`,
-        difficulty: String(item.dificuldade_nivel || '').trim().toLowerCase()
-      }))
-      .filter((item) => item.question && item.options.length >= 2 && item.correctIndex >= 0);
-
-    // Seleciona de forma isolada 10 perguntas estritamente para o quiz atual
-    questions = window.TheraQQuizLogic.pickRandomQuestions(
-      availableQuestions, 
-      dificuldadeEscolhida, 
-      10
-    );
-
-    if (!Array.isArray(questions) || questions.length < 10) {
-      throw new Error(`A dificuldade selecionada precisa ter pelo menos 10 perguntas válidas no banco para iniciar o quiz.`);
-    }
-
-    els.startQuizButton.disabled = false;
-    els.startQuizButton.textContent = 'Começar quiz';
-    updateTopbar();
-  } catch (erro) {
-    console.error('Erro ao buscar perguntas:', erro);
-    els.startQuizButton.textContent = 'Tentar carregar novamente';
-    els.startQuizButton.disabled = false;
-    questions = []; // Garante que fica vazio em caso de erro
-    alert(erro.message || 'A dificuldade selecionada precisa ter pelo menos 10 perguntas válidas no banco para iniciar o quiz.');
-  }
-}
 
 // Remove listeners duplicados anteriores (caso houvesse) e adiciona de forma limpa
 if (els.difficultySelect) {
