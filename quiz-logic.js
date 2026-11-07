@@ -1,4 +1,22 @@
-function pickRandomQuestions(items, difficulty, maxQuestions = 10) {
+(function (globalScope) {
+  function normalizeDifficulty(value) {
+    if (typeof value !== 'string') return '';
+
+    const normalized = value
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/\s+/g, '');
+
+    if (!normalized || normalized === 'todas') return '';
+    if (normalized.includes('facil')) return 'facil';
+    if (normalized.includes('med') || normalized.includes('medio')) return 'medio';
+    if (normalized.includes('dif') || normalized.includes('dificil')) return 'dificil';
+    return normalized;
+  }
+
+  function pickRandomQuestions(items, difficulty, maxQuestions = 10) {
     const safeMax = Number.isInteger(maxQuestions) && maxQuestions > 0 ? maxQuestions : 10;
     const questions = Array.isArray(items) ? [...items] : [];
     const selectedDifficulty = normalizeDifficulty(difficulty);
@@ -14,7 +32,6 @@ function pickRandomQuestions(items, difficulty, maxQuestions = 10) {
       return itemDifficulty === selectedDifficulty;
     });
 
-    // Permitir exatamente ou mais que o limite desejado
     if (filtered.length < safeMax) {
       return [];
     }
@@ -27,3 +44,12 @@ function pickRandomQuestions(items, difficulty, maxQuestions = 10) {
 
     return shuffled.slice(0, safeMax);
   }
+
+  const api = { normalizeDifficulty, pickRandomQuestions };
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = api;
+  }
+
+  globalScope.TheraQQuizLogic = api;
+})(typeof window !== 'undefined' ? window : globalThis);
