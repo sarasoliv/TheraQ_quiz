@@ -35,76 +35,70 @@ const els = {
 // ==========================================================
 let questions = [];
 
-// Função para buscar as perguntas do banco de dados
+// Função para buscar as perguntas do banco SQL enviando a dificuldade selecionada
 async function carregarPerguntasDoBanco() {
-  // Pega a dificuldade selecionada e normaliza (ex: "Médio" vira "medio")
-  const dificuldadeSelecionada = (els.difficultySelect.value || 'facil')
+  const dificuldadeEscolhida = (els.difficultySelect.value || 'facil')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 
   els.startQuizButton.disabled = true;
   els.startQuizButton.textContent = 'Carregando perguntas...';
+  
+  questions = [];
 
   try {
-    const resposta = await fetch('/api/perguntas');
-    if (!resposta.ok) {
-      throw new Error('O servidor respondeu com erro: ' + resposta.status);
-    }
+    // CORREÇÃO: Passa a dificuldade escolhida como parâmetro na URL para o servidor (_server.js)
+    const url = new URL('/api/perguntas', window.location.origin);
+    url.searchParams.set('dificuldade', dificuldadeEscolhida);
 
+    const resposta = await fetch(url);
+    if (!resposta.ok) throw new Error('Erro ao carregar perguntas do banco.');
+    
     const dados = await resposta.json();
 
     if (!Array.isArray(dados) || dados.length === 0) {
-      throw new Error('A API retornou uma lista vazia de perguntas.');
+      throw new Error('Nenhuma pergunta encontrada no banco de dados.');
     }
 
-    // Mapeia os dados do banco para o formato do quiz
-    const todasPerguntas = dados.map(function (item) {
-      // Pega o nível de dificuldade vindo do banco e normaliza
-      const nivelBanco = (item.dificuldade_nivel || item.difficulty || '')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase();
-
-      return {
+    const availableQuestions = dados
+      .map((item) => ({
         id: item.id,
-        question: item.enunciado || item.question,
-        options: item.alternativas || [item.opcao_a, item.opcao_b, item.opcao_c, item.opcao_d, item.opcao_e],
+        question: item.enunciado,
+        options: item.alternativas,
         correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta || '').toUpperCase()),
-        explanation: item.justificativa_resposta || item.explicacao || 'Sem explicação disponível.',
-        difficulty: nivelBanco
-      };
-    });
+        explanation: item.justificativa_resposta || item.explicacao || `Fonte: ${item.referencia || 'material de referência'}.`,
+        difficulty: String(item.dificuldade_nivel || '').trim().toLowerCase()
+      }))
+      .filter((item) => item.question && item.options.length >= 2 && item.correctIndex >= 0);
 
-    // Filtra estritamente pelas perguntas que pertencem à dificuldade escolhida
-    const perguntasFiltradas = todasPerguntas.filter(function (item) {
-      return item.difficulty === dificuldadeSelecionada;
-    });
-
-    // Envia para o logic ou embaralha diretamente
+    // Usa a lógica do quiz-logic.js para embaralhar e selecionar exatamente 10 perguntas
     questions = window.TheraQQuizLogic.pickRandomQuestions(
-      perguntasFiltradas,
-      dificuldadeSelecionada,
+      availableQuestions, 
+      dificuldadeEscolhida, 
       10
     );
 
     if (!Array.isArray(questions) || questions.length < 10) {
-      throw new Error(`Encontradas apenas ${perguntasFiltradas.length} perguntas para o nível "${dificuldadeSelecionada}". São necessárias pelo menos 10.`);
+      throw new Error(`A dificuldade selecionada precisa ter pelo menos 10 perguntas válidas no banco para iniciar o quiz.`);
     }
 
     els.startQuizButton.disabled = false;
     els.startQuizButton.textContent = 'Começar quiz';
     updateTopbar();
   } catch (erro) {
-    console.error('Erro detalhado ao carregar perguntas:', erro);
+    console.error('Erro ao buscar perguntas:', erro);
     els.startQuizButton.textContent = 'Tentar carregar novamente';
     els.startQuizButton.disabled = false;
-    alert(erro.message || 'Erro ao carregar as perguntas do banco de dados.');
+    alert(erro.message || 'A dificuldade selecionada precisa ter pelo menos 10 perguntas válidas no banco para iniciar o quiz.');
   }
 }
 
 window.addEventListener('DOMContentLoaded', carregarPerguntasDoBanco);
-els.difficultySelect.addEventListener('change', carregarPerguntasDoBanco);
+if (els.difficultySelect) {
+  els.difficultySelect.addEventListener('change', carregarPerguntasDoBanco);
+}
+
 // ==========================================================
 // Estado atual da partida
 // ==========================================================
