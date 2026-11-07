@@ -37,15 +37,18 @@ let questions = [];
 
 // Função para buscar as perguntas do banco SQL enviando a dificuldade selecionada
 async function carregarPerguntasDoBanco() {
-  const dificuldadeEscolhida = (els.difficultySelect?.value || 'facil')
+  const rawDifficulty = els.difficultySelect?.value || 'facil';
+  
+  // Normaliza limpo para enviar exatamente "facil", "medio" ou "dificil"
+  const dificuldadeEscolhida = String(rawDifficulty)
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
+    .toLowerCase()
+    .trim();
 
   els.startQuizButton.disabled = true;
   els.startQuizButton.textContent = 'Carregando perguntas...';
   
-  // Zera explicitamente o array global para não acumular dados anteriores ao trocar de nível
   questions = [];
 
   try {
@@ -58,7 +61,7 @@ async function carregarPerguntasDoBanco() {
     const dados = await resposta.json();
 
     if (!Array.isArray(dados) || dados.length === 0) {
-      throw new Error('Nenhuma pergunta encontrada no banco de dados.');
+      throw new Error(`Nenhuma pergunta encontrada para o nível "${dificuldadeEscolhida}".`);
     }
 
     const availableQuestions = dados
@@ -72,17 +75,23 @@ async function carregarPerguntasDoBanco() {
           .normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '')
           .toLowerCase()
+          .trim()
       }))
       .filter((item) => item.question && item.options.length >= 2 && item.correctIndex >= 0);
 
-    // Como o servidor já filtrou por nível, seleciona 10 perguntas aleatórias com segurança
-    questions = window.TheraQQuizLogic?.pickRandomQuestions
-      ? window.TheraQQuizLogic.pickRandomQuestions(availableQuestions, 10)
-      : shuffleQuestions(availableQuestions).slice(0, 10);
+    // Filtro adicional de segurança no front-end para garantir 100% de isolamento entre os níveis
+    const perguntasDoNivelExato = availableQuestions.filter((item) => {
+      return item.difficulty === dificuldadeEscolhida;
+    });
 
-    if (!Array.isArray(questions) || questions.length < 10) {
-      throw new Error(`A dificuldade selecionada precisa ter pelo menos 10 perguntas válidas no banco para iniciar o quiz.`);
+    if (perguntasDoNivelExato.length < 10) {
+      throw new Error(`Encontradas apenas ${perguntasDoNivelExato.length} perguntas para o nível "${dificuldadeEscolhida}". São necessárias pelo menos 10.`);
     }
+
+    // Seleciona exatamente 10 perguntas embaralhadas do nível correto
+    questions = window.TheraQQuizLogic?.pickRandomQuestions
+      ? window.TheraQQuizLogic.pickRandomQuestions(perguntasDoNivelExato, 10)
+      : perguntasDoNivelExato.sort(() => Math.random() - 0.5).slice(0, 10);
 
     els.startQuizButton.disabled = false;
     els.startQuizButton.textContent = 'Começar quiz';
@@ -91,22 +100,9 @@ async function carregarPerguntasDoBanco() {
     console.error('Erro ao buscar perguntas:', erro);
     els.startQuizButton.textContent = 'Tentar carregar novamente';
     els.startQuizButton.disabled = false;
-    questions = []; 
+    questions = [];
     alert(erro.message || 'A dificuldade selecionada precisa ter pelo menos 10 perguntas válidas no banco para iniciar o quiz.');
   }
-}
-
-// Remove listeners duplicados anteriores e adiciona de forma limpa
-if (els.difficultySelect) {
-  els.difficultySelect.removeEventListener('change', carregarPerguntasDoBanco);
-  els.difficultySelect.addEventListener('change', carregarPerguntasDoBanco);
-}
-
-// Garante o carregamento inicial único ao abrir a página
-if (document.readyState === 'loading') {
-  window.addEventListener('DOMContentLoaded', carregarPerguntasDoBanco);
-} else {
-  carregarPerguntasDoBanco();
 }
 // ==========================================================
 // Estado atual da partida
