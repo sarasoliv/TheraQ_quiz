@@ -30,56 +30,11 @@ const els = {
   volumeControl: document.getElementById('volume-control')
 };
 
-// ==========================================================
-// Banco de questões do quiz
-// ==========================================================
-let questions = [];
+questions = pickRandomQuestions(filteredByDifficulty, selectedDifficulty, MAX_QUIZ_QUESTIONS);
 
-// Função para buscar as perguntas do banco SQL assim que a página abrir ou a dificuldade mudar
-async function carregarPerguntasDoBanco() {
-  const selectedDifficulty = getSelectedDifficulty();
-
-  els.startQuizButton.disabled = true;
-  els.startQuizButton.textContent = 'Carregando perguntas...';
-  try {
-    const url = new URL('/api/perguntas', window.location.origin);
-
-    const resposta = await fetch(url);
-    if (!resposta.ok) throw new Error('Erro ao carregar perguntas do banco.');
-    const dados = await resposta.json();
-
-    const availableQuestions = dados
-      .map((item) => ({
-        id: item.id,
-        question: item.enunciado,
-        options: item.alternativas,
-        correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta).toUpperCase()),
-        explanation: item.explicacao || `Fonte: ${item.referencia || 'material de referência'}.`,
-        difficulty: (item.dificuldade_nivel || '').toString().trim()
-      }))
-      .filter((item) => item.question && item.options.length >= 2 && item.correctIndex >= 0);
-
-    const filteredByDifficulty = availableQuestions.filter(
-      (item) => normalizeDifficulty(item.difficulty) === selectedDifficulty
-    );
-
-    questions = pickRandomQuestions(filteredByDifficulty, selectedDifficulty, MAX_QUIZ_QUESTIONS);
-
-    if (questions.length !== MAX_QUIZ_QUESTIONS) {
+    if (questions.length < MAX_QUIZ_QUESTIONS) {
       throw new Error(`A dificuldade selecionada precisa ter pelo menos ${MAX_QUIZ_QUESTIONS} perguntas para iniciar o quiz.`);
     }
-    els.startQuizButton.disabled = false;
-    els.startQuizButton.textContent = 'Começar quiz';
-    updateTopbar();
-  } catch (erro) {
-    console.error('Erro ao buscar perguntas:', erro);
-    els.startQuizButton.textContent = 'Tentar carregar novamente';
-    els.startQuizButton.disabled = false;
-    alert('A dificuldade selecionada precisa ter pelo menos 10 perguntas válidas no banco para iniciar o quiz.');
-  }
-}
-window.addEventListener('DOMContentLoaded', carregarPerguntasDoBanco);
-
 // ==========================================================
 // Estado atual da partida
 // ==========================================================
