@@ -265,7 +265,7 @@ function sendJson(response, statusCode, value) {
 }
 
 function normalizarDificuldade(value) {
-  if (typeof value !== "string") return "";
+  if (typeof value !== "string") return "facil";
   const normalized = value
     .trim()
     .normalize("NFD")
@@ -273,10 +273,11 @@ function normalizarDificuldade(value) {
     .toLowerCase()
     .replace(/\s+/g, "");
 
-  if (!normalized || normalized === "todas") return "";
-  if (["facil", "fácil"].includes(normalized)) return "facil";
-  if (["medio", "media", "médio", "média"].includes(normalized)) return "medio";
-  if (["dificil", "difícil"].includes(normalized)) return "dificil";
+  if (!normalized || normalized === "todas") return "facil";
+  if (normalized.includes("facil")) return "facil";
+  if (normalized.includes("med") || normalized.includes("medio")) return "medio";
+  if (normalized.includes("dif")) return "dificil";
+  
   return normalized;
 }
 
