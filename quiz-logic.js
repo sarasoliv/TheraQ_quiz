@@ -1,28 +1,45 @@
 (function (globalScope) {
+  // Função para normalizar caso venha algo com espaços ou letras maiúsculas
+  function normalizeDifficulty(valor) {
+    if (!valor) return '';
+    return String(valor).trim().toLowerCase();
+  }
 
-  // Função simples para filtrar e embaralhar 10 perguntas
-  function pickRandomQuestions(listaPerguntas, dificuldadeDesejada) {
-    // Filtra estritamente pela dificuldade igual à escolhida
-    const filtradas = listaPerguntas.filter(function(item) {
-      const dif = item.dificuldade_nivel || item.difficulty;
-      return dif === dificuldadeDesejada;
-    });
+  // Função simples para filtrar, embaralhar e pegar 10 perguntas
+  function pickRandomQuestions(listaPerguntas, dificuldadeDesejada, quantidade) {
+    const totalDesejado = quantidade || 10;
+    const difBuscada = normalizeDifficulty(dificuldadeDesejada);
 
-    // Se tiver menos de 10, retorna array vazio
-    if (filtradas.length < 10) {
+    if (!Array.isArray(listaPerguntas)) {
       return [];
     }
 
-    // Embaralha usando Math.random()
-    filtradas.sort(function() {
-      return Math.random() - 0.5;
+    // 1. Filtra estritamente apenas a dificuldade selecionada
+    const perguntasFiltradas = listaPerguntas.filter(function (item) {
+      const difItem = normalizeDifficulty(item.dificuldade_nivel || item.difficulty);
+      return difItem === difBuscada;
     });
 
-    // Retorna exatamente 10 perguntas
-    return filtradas.slice(0, 10);
+    // 2. Se houver menos que o total desejado (ex: 10), impede o início do quiz
+    if (perguntasFiltradas.length < totalDesejado) {
+      return [];
+    }
+
+    // 3. Embaralha a lista de perguntas da dificuldade escolhida
+    const embaralhadas = [...perguntasFiltradas];
+    for (let i = embaralhadas.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const temp = embaralhadas[i];
+      embaralhadas[i] = embaralhadas[j];
+      embaralhadas[j] = temp;
+    }
+
+    // 4. Retorna exatamente as 10 primeiras do grupo embaralhado
+    return embaralhadas.slice(0, totalDesejado);
   }
 
   const api = {
+    normalizeDifficulty: normalizeDifficulty,
     pickRandomQuestions: pickRandomQuestions
   };
 
