@@ -35,7 +35,6 @@ const els = {
 // ==========================================================
 let questions = [];
 
-// Função para buscar as perguntas do banco SQL enviando a dificuldade selecionada
 async function carregarPerguntasDoBanco() {
   const rawDifficulty = els.difficultySelect?.value || 'facil';
   
@@ -63,6 +62,7 @@ async function carregarPerguntasDoBanco() {
       throw new Error(`Nenhuma pergunta encontrada para o nível "${dificuldadeEscolhida}".`);
     }
 
+    // Mapeia e normaliza os dados vindos da API
     const availableQuestions = dados
       .map((item) => ({
         id: item.id,
@@ -70,20 +70,28 @@ async function carregarPerguntasDoBanco() {
         options: item.alternativas,
         correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta || '').toUpperCase()),
         explanation: item.justificativa_resposta || item.explicacao || `Fonte: ${item.referencia || 'material de referência'}.`,
-        difficulty: String(item.dificuldade_nivel || '').trim().toLowerCase()
+        difficulty: String(item.dificuldade_nivel || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .trim()
       }))
       .filter((item) => item.question && item.options.length >= 2 && item.correctIndex >= 0);
 
-    // Como o servidor (backend) já filtrou perfeitamente no PostgreSQL, 
-    // aceitamos diretamente os dados trazidos da API com total segurança
-    if (availableQuestions.length < 10) {
-      throw new Error(`Encontradas apenas ${availableQuestions.length} perguntas válidas para este nível. São necessárias pelo menos 10.`);
+    // 🔒 BLOQUEIO ABSOLUTO: Garante de forma estrita que NENHUMA pergunta de outro nível passe
+    const perguntasDoNivelExato = availableQuestions.filter((item) => {
+      return item.difficulty === dificuldadeEscolhida;
+    });
+
+    // Valida se o bloco atual tem o mínimo necessário (10 perguntas)
+    if (perguntasDoNivelExato.length < 10) {
+      throw new Error(`O nível "${dificuldadeEscolhida}" possui apenas ${perguntasDoNivelExato.length} perguntas válidas. São necessárias pelo menos 10.`);
     }
 
-    // Seleciona exatamente 10 perguntas aleatórias para o quiz atual
+    // Sorteia exatamente 10 perguntas únicas e exclusivas do respectivo nível
     questions = window.TheraQQuizLogic?.pickRandomQuestions
-      ? window.TheraQQuizLogic.pickRandomQuestions(availableQuestions, 10)
-      : availableQuestions.sort(() => Math.random() - 0.5).slice(0, 10);
+      ? window.TheraQQuizLogic.pickRandomQuestions(perguntasDoNivelExato, 10)
+      : perguntasDoNivelExato.sort(() => Math.random() - 0.5).slice(0, 10);
 
     els.startQuizButton.disabled = false;
     els.startQuizButton.textContent = 'Começar quiz';
