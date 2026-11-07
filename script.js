@@ -35,51 +35,70 @@ const els = {
 // ==========================================================
 let questions = [];
 
-// Função para buscar as perguntas do banco SQL assim que a página abrir
+// Função para buscar as perguntas do banco
 async function carregarPerguntasDoBanco() {
-  const selectedDifficulty = getSelectedDifficulty();
+  // Pega o valor selecionado no <select> de dificuldade ('facil', 'medio' ou 'dificil')
+  const dificuldadeEscolhida = els.difficultySelect.value;
 
   els.startQuizButton.disabled = true;
   els.startQuizButton.textContent = 'Carregando perguntas...';
-  try {
-    const url = new URL('/api/perguntas', window.location.origin);
 
-    const resposta = await fetch(url);
-    if (!resposta.ok) throw new Error('Erro ao carregar perguntas do banco.');
+  try {
+    const resposta = await fetch('/api/perguntas');
+    if (!resposta.ok) {
+      throw new Error('Erro na resposta do servidor.');
+    }
+
     const dados = await resposta.json();
 
-    const availableQuestions = dados
-      .map((item) => ({
+    // 1. Converte e limpa os dados do banco
+    const todasPerguntas = dados.map(function(item) {
+      return {
         id: item.id,
         question: item.enunciado,
         options: item.alternativas,
-        correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta || '').toUpperCase()),
-        explanation: item.explicacao || `Fonte: ${item.referencia || 'material de referência'}.`,
-        difficulty: (item.dificuldade_nivel || item.difficulty || '').toString().trim()
-      }))
-      .filter((item) => item.question && item.options.length >= 2 && item.correctIndex >= 0);
+        correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta).toUpperCase()),
+        explanation: item.explicacao || 'Sem explicação disponível.',
+        difficulty: item.dificuldade_nivel || item.difficulty
+      };
+    });
 
-    const filteredByDifficulty = availableQuestions.filter(
-      (item) => normalizeDifficulty(item.difficulty) === selectedDifficulty
-    );
+    // 2. Filtra ESTREITAMENTE apenas as perguntas da dificuldade escolhida pelo usuário
+    const perguntasFiltradas = todasPerguntas.filter(function(item) {
+      return item.difficulty === dificuldadeEscolhida;
+    });
 
-    questions = pickRandomQuestions(filteredByDifficulty, selectedDifficulty, MAX_QUIZ_QUESTIONS);
-
-    if (questions.length < MAX_QUIZ_QUESTIONS) {
-      throw new Error(`A dificuldade selecionada precisa ter pelo menos ${MAX_QUIZ_QUESTIONS} perguntas para iniciar o quiz.`);
+    // 3. Valida se existem pelo menos 10 perguntas dessa dificuldade
+    if (perguntasFiltradas.length < 10) {
+      alert('A dificuldade selecionada precisa ter pelo menos 10 perguntas no banco.');
+      els.startQuizButton.textContent = 'Tentar carregar novamente';
+      els.startQuizButton.disabled = false;
+      return;
     }
+
+    // 4. Embaralha as perguntas filtradas
+    perguntasFiltradas.sort(function() {
+      return Math.random() - 0.5;
+    });
+
+    // 5. Pega exatamente 10 perguntas embaralhadas
+    questions = perguntasFiltradas.slice(0, 10);
+
     els.startQuizButton.disabled = false;
     els.startQuizButton.textContent = 'Começar quiz';
     updateTopbar();
+
   } catch (erro) {
     console.error('Erro ao buscar perguntas:', erro);
     els.startQuizButton.textContent = 'Tentar carregar novamente';
     els.startQuizButton.disabled = false;
-    alert('A dificuldade selecionada precisa ter pelo menos 10 perguntas válidas no banco para iniciar o quiz.');
+    alert('Erro ao carregar as perguntas do banco de dados.');
   }
 }
-window.addEventListener('DOMContentLoaded', carregarPerguntasDoBanco);
 
+// Recarrega as perguntas quando a página abre ou quando o usuário muda a dificuldade no select
+window.addEventListener('DOMContentLoaded', carregarPerguntasDoBanco);
+els.difficultySelect.addEventListener('change', carregarPerguntasDoBanco);
 // ==========================================================
 // Estado atual da partida
 // ==========================================================
