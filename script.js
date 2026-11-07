@@ -37,7 +37,7 @@ let questions = [];
 
 // Função para buscar as perguntas do banco SQL enviando a dificuldade selecionada
 async function carregarPerguntasDoBanco() {
-  const dificuldadeEscolhida = (els.difficultySelect.value || 'facil')
+  const dificuldadeEscolhida = (els.difficultySelect?.value || 'facil')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
@@ -45,10 +45,10 @@ async function carregarPerguntasDoBanco() {
   els.startQuizButton.disabled = true;
   els.startQuizButton.textContent = 'Carregando perguntas...';
   
+  // Zera explicitamente o array global para não acumular dados anteriores ao trocar de nível
   questions = [];
 
   try {
-    // CORREÇÃO: Passa a dificuldade escolhida como parâmetro na URL para o servidor (_server.js)
     const url = new URL('/api/perguntas', window.location.origin);
     url.searchParams.set('dificuldade', dificuldadeEscolhida);
 
@@ -72,7 +72,7 @@ async function carregarPerguntasDoBanco() {
       }))
       .filter((item) => item.question && item.options.length >= 2 && item.correctIndex >= 0);
 
-    // Usa a lógica do quiz-logic.js para embaralhar e selecionar exatamente 10 perguntas
+    // Seleciona de forma isolada 10 perguntas estritamente para o quiz atual
     questions = window.TheraQQuizLogic.pickRandomQuestions(
       availableQuestions, 
       dificuldadeEscolhida, 
@@ -90,15 +90,23 @@ async function carregarPerguntasDoBanco() {
     console.error('Erro ao buscar perguntas:', erro);
     els.startQuizButton.textContent = 'Tentar carregar novamente';
     els.startQuizButton.disabled = false;
+    questions = []; // Garante que fica vazio em caso de erro
     alert(erro.message || 'A dificuldade selecionada precisa ter pelo menos 10 perguntas válidas no banco para iniciar o quiz.');
   }
 }
 
-window.addEventListener('DOMContentLoaded', carregarPerguntasDoBanco);
+// Remove listeners duplicados anteriores (caso houvesse) e adiciona de forma limpa
 if (els.difficultySelect) {
+  els.difficultySelect.removeEventListener('change', carregarPerguntasDoBanco);
   els.difficultySelect.addEventListener('change', carregarPerguntasDoBanco);
 }
 
+// Garante o carregamento inicial único ao abrir a página
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', carregarPerguntasDoBanco);
+} else {
+  carregarPerguntasDoBanco();
+}
 // ==========================================================
 // Estado atual da partida
 // ==========================================================
