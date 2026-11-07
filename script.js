@@ -68,20 +68,17 @@ async function carregarPerguntasDoBanco() {
         options: item.alternativas,
         correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta || '').toUpperCase()),
         explanation: item.justificativa_resposta || item.explicacao || `Fonte: ${item.referencia || 'material de referência'}.`,
-        difficulty: String(item.dificuldade_nivel || '').trim().toLowerCase()
+        difficulty: String(item.dificuldade_nivel || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
       }))
       .filter((item) => item.question && item.options.length >= 2 && item.correctIndex >= 0);
 
-    // 🔒 FILTRO RIGOROSO: Garante estritamente que APENAS perguntas da dificuldade escolhida passem
-    const perguntasDoNivelExato = availableQuestions.filter((item) => {
-      return item.difficulty === dificuldadeEscolhida;
-    });
-
-    // Seleciona de forma isolada 10 perguntas estritamente para o quiz atual
-    questions = window.TheraQQuizLogic.pickRandomQuestions(
-      perguntasDoNivelExato, 
-      10
-    );
+    // Como o servidor já filtrou por nível, seleciona 10 perguntas aleatórias com segurança
+    questions = window.TheraQQuizLogic?.pickRandomQuestions
+      ? window.TheraQQuizLogic.pickRandomQuestions(availableQuestions, 10)
+      : shuffleQuestions(availableQuestions).slice(0, 10);
 
     if (!Array.isArray(questions) || questions.length < 10) {
       throw new Error(`A dificuldade selecionada precisa ter pelo menos 10 perguntas válidas no banco para iniciar o quiz.`);
@@ -94,12 +91,12 @@ async function carregarPerguntasDoBanco() {
     console.error('Erro ao buscar perguntas:', erro);
     els.startQuizButton.textContent = 'Tentar carregar novamente';
     els.startQuizButton.disabled = false;
-    questions = []; // Garante que fica vazio em caso de erro
+    questions = []; 
     alert(erro.message || 'A dificuldade selecionada precisa ter pelo menos 10 perguntas válidas no banco para iniciar o quiz.');
   }
 }
 
-// Remove listeners duplicados anteriores (caso houvesse) e adiciona de forma limpa
+// Remove listeners duplicados anteriores e adiciona de forma limpa
 if (els.difficultySelect) {
   els.difficultySelect.removeEventListener('change', carregarPerguntasDoBanco);
   els.difficultySelect.addEventListener('change', carregarPerguntasDoBanco);
