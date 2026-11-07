@@ -1,4 +1,3 @@
-// Handler compatível com plataformas serverless que fornecem DATABASE_URL.
 const { Pool } = require("pg");
 let pool;
 
@@ -18,8 +17,19 @@ module.exports = async function handler(request, response) {
     const dificuldade = normalizarDificuldade(paramDificuldade);
 
     const queryText = `
-      SELECT q.id, q.enunciado, q.resposta_correta, q.dificuldade_nivel,
-             f.referencia, o.opcao_a, o.opcao_b, o.opcao_c, o.opcao_d, o.opcao_e
+      SELECT
+        q.id,
+        q.enunciado,
+        q.resposta_correta,
+        q.dificuldade_nivel,
+        q.justificativa_resposta,
+        f.referencia,
+        f.url AS fonte_url,
+        o.opcao_a,
+        o.opcao_b,
+        o.opcao_c,
+        o.opcao_d,
+        o.opcao_e
       FROM questoes q
       JOIN opcao_questoes o ON o.id_opcao = q.opcao_id
       LEFT JOIN fonte f ON f.id = q.fonte_id
@@ -31,7 +41,7 @@ module.exports = async function handler(request, response) {
 
     const { rows } = await pool.query(queryText, [dificuldade]);
 
-    const formattedRows = rows.map(q => ({
+    const formattedRows = rows.map((q) => ({
       ...q,
       alternativas: [q.opcao_a, q.opcao_b, q.opcao_c, q.opcao_d, q.opcao_e]
     }));
@@ -39,7 +49,9 @@ module.exports = async function handler(request, response) {
     return response.status(200).json(formattedRows);
   } catch (error) {
     console.error("Erro ao consultar perguntas:", error.message);
-    return response.status(500).json({ error: "Erro ao carregar perguntas: " + error.message });
+    return response.status(500).json({
+      error: "Erro ao carregar perguntas: " + error.message
+    });
   }
 };
 
