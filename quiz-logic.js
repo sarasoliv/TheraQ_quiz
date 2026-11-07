@@ -1,5 +1,5 @@
 (function (globalScope) {
-  function pickRandomQuestions(listaFiltrada, dificuldadeDesejada, quantidade) {
+  function pickRandomQuestions(listaFiltrada, quantidade) {
     const totalDesejado = quantidade || 10;
 
     if (!Array.isArray(listaFiltrada) || listaFiltrada.length < totalDesejado) {
@@ -19,8 +19,17 @@
     return embaralhadas.slice(0, totalDesejado);
   }
 
+  function normalizeDifficulty(text) {
+    return String(text || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }
+
   const api = {
-    pickRandomQuestions: pickRandomQuestions
+    pickRandomQuestions: pickRandomQuestions,
+    normalizeDifficulty: normalizeDifficulty
   };
 
   if (typeof module !== 'undefined' && module.exports) {
