@@ -677,6 +677,20 @@ h1, h2, h3, p { margin: 0; }
 .explanation-box p {
   margin: 0;
 }
+.question-source {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.question-source strong {
+  color: var(--accent-soft);
+}
+.question-source a {
+  color: var(--accent);
+  word-break: break-word;
+}
 
 .options-panel {
   padding: 18px 18px 14px;
