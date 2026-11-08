@@ -19,6 +19,7 @@ const els = {
   answersContainer: document.getElementById('answers-container'),
   explanationBox: document.getElementById('explanation-box'),
   explanationText: document.getElementById('explanation-text'),
+  questionSource: document.getElementById('question-source'),
   finalScore: document.getElementById('final-score'),
   finalRankingList: document.getElementById('final-ranking-list'),
   sessionRankingList: document.getElementById('session-ranking-list'),
@@ -62,36 +63,35 @@ async function carregarPerguntasDoBanco() {
       throw new Error(`Nenhuma pergunta encontrada para o nível "${dificuldadeEscolhida}".`);
     }
 
-    // Mapeia e garante a exibição da explicação e fonte
+    // Mapeia e normaliza os dados vindos da API
     const availableQuestions = dados
-      .map((item) => {
-        const justificativa = item.justificativa_resposta || item.explicacao || '';
-        const referencia = item.referencia ? `Fonte: ${item.referencia}.` : 'Fonte: Material de referência oficial do TheraQ.';
-        const textoExplicacao = justificativa ? `${justificativa} (${referencia})` : referencia;
-
-        return {
-          id: item.id,
-          question: item.enunciado,
-          options: item.alternativas,
-          correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta || '').toUpperCase()),
-          explanation: textoExplicacao,
-          difficulty: String(item.dificuldade_nivel || '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase()
-            .trim()
-        };
-      })
+      .map((item) => ({
+        id: item.id,
+        question: item.enunciado,
+        options: item.alternativas,
+        correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta || '').toUpperCase()),
+        explanation: item.justificativa_resposta || item.explicacao || 'Sem justificativa cadastrada.',
+        source: item.referencia || item.fonte_url || 'Fonte não informada.',
+        sourceUrl: item.fonte_url || '',
+        difficulty: String(item.dificuldade_nivel || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .trim()
+      }))
       .filter((item) => item.question && item.options.length >= 2 && item.correctIndex >= 0);
 
+    // 🔒 BLOQUEIO ABSOLUTO: Garante de forma estrita que NENHUMA pergunta de outro nível passe
     const perguntasDoNivelExato = availableQuestions.filter((item) => {
       return item.difficulty === dificuldadeEscolhida;
     });
 
+    // Valida se o bloco atual tem o mínimo necessário (exatamente 10 perguntas)
     if (perguntasDoNivelExato.length < 10) {
       throw new Error(`O nível "${dificuldadeEscolhida}" possui apenas ${perguntasDoNivelExato.length} perguntas válidas. São necessárias pelo menos 10.`);
     }
 
+    // Sorteia estritamente 10 perguntas únicas e exclusivas do respectivo nível
     questions = window.TheraQQuizLogic?.pickRandomQuestions
       ? window.TheraQQuizLogic.pickRandomQuestions(perguntasDoNivelExato, 10)
       : perguntasDoNivelExato.sort(() => Math.random() - 0.5).slice(0, 10);
@@ -107,7 +107,6 @@ async function carregarPerguntasDoBanco() {
     alert(erro.message || 'A dificuldade selecionada precisa ter pelo menos 10 perguntas válidas no banco para iniciar o quiz.');
   }
 }
-
 // ==========================================================
 // Estado atual da partida
 // ==========================================================
@@ -117,14 +116,28 @@ const state = {
   answered: false,
   playerName: '',
   score: 0,
-  userAnswers: [],
-  isSubmitting: false
+  userAnswers: []
 };
 
 const answerAudio = {
   correct: new Audio('./sounds/acerto.mp3'),
   wrong: new Audio('./sounds/errou.mp3')
 };
+
+const MAX_QUIZ_QUESTIONS = 10;
+
+function getSelectedDifficulty() {
+  return normalizeDifficulty(els.difficultySelect?.value || 'medio');
+}
+
+function shuffleQuestions(items) {
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
 
 function getAudioVolume() {
   const value = Number(els.volumeControl?.value ?? 0.7);
@@ -144,7 +157,12 @@ function playAnswerSound(isCorrect) {
 const readStorage = (key) => {
   const stored = localStorage.getItem(key);
   if (!stored) return [];
-  try { return JSON.parse(stored); } catch { return []; }
+
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return [];
+  }
 };
 
 const writeStorage = (key, value) => localStorage.setItem(key, JSON.stringify(value));
@@ -157,6 +175,7 @@ const updateTopbar = () => {
 // ==========================================================
 // Navegação entre telas
 // ==========================================================
+
 function showScreen(screenName) {
   Object.entries({ intro: els.introScreen, quiz: els.quizScreen, final: els.finalScreen })
     .forEach(([name, el]) => el.classList.toggle('active', name === screenName));
@@ -187,7 +206,9 @@ function normalizeRankingEntry(entry) {
   const scoreValue = Number(entry?.score ?? entry?.pontuacao_jogador ?? 0);
   const score = Number.isFinite(scoreValue) ? scoreValue : 0;
 
-  if (!nickname || !Number.isFinite(score)) return null;
+  if (!nickname || !Number.isFinite(score)) {
+    return null;
+  }
 
   return { nickname, score };
 }
@@ -195,26 +216,34 @@ function normalizeRankingEntry(entry) {
 async function fetchGlobalRanking() {
   try {
     const response = await fetch('/api/ranking', { cache: 'no-store' });
-    if (!response.ok) throw new Error(`status ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`status ${response.status}`);
+    }
+
     const data = await response.json();
-    return (Array.isArray(data) ? data : []).map(normalizeRankingEntry).filter(Boolean);
+    return (Array.isArray(data) ? data : [])
+      .map(normalizeRankingEntry)
+      .filter(Boolean)
+      .sort((a, b) => b.score - a.score || a.nickname.localeCompare(b.nickname));
   } catch (error) {
-    console.warn('Não foi possível carregar o ranking global:', error);
+    console.warn('Não foi possível carregar o ranking global. Usando cache local apenas:', error);
     return [];
   }
 }
 
 async function renderSidebarRanking() {
   const globalRanking = await fetchGlobalRanking();
-  const localRanking = getRanking().map(normalizeRankingEntry).filter(Boolean);
+  const localRanking = getRanking()
+    .map(normalizeRankingEntry)
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score || a.nickname.localeCompare(b.nickname));
 
-  const rankingList = globalRanking.length ? globalRanking : localRanking;
-  const sortedRanking = [...rankingList].sort((a, b) => b.score - a.score || a.nickname.localeCompare(b.nickname));
+  const ranking = globalRanking.length ? globalRanking : localRanking;
   const usingLocalFallback = globalRanking.length === 0 && localRanking.length > 0;
 
   els.sessionRankingList.innerHTML = '';
 
-  if (!sortedRanking.length) {
+  if (!ranking.length) {
     els.sessionRankingList.innerHTML = `
       <li>
         <span class="rank-number">0</span>
@@ -225,7 +254,7 @@ async function renderSidebarRanking() {
     return;
   }
 
-  sortedRanking.slice(0, 8).forEach((entry, index) => {
+  ranking.slice(0, 8).forEach((entry, index) => {
     const item = document.createElement('li');
     item.innerHTML = `
       <span class="rank-number">${index + 1}</span>
@@ -254,6 +283,8 @@ function renderQuestion() {
   updateTopbar();
   els.explanationBox.classList.add('hidden');
   els.explanationText.textContent = '';
+  els.questionSource.textContent = '';
+  els.questionSource.removeAttribute('href');
   els.confirmButton.textContent = 'Confirmar resposta';
   els.confirmButton.disabled = false;
   els.answersContainer.innerHTML = '';
@@ -286,6 +317,9 @@ function renderQuestion() {
   });
 }
 
+// ==========================================================
+// Feedback da resposta e explicação
+// ==========================================================
 function showAnswerFeedback() {
   const question = questions[state.currentQuestionIndex];
   document.querySelectorAll('.option-item').forEach((item, index) => {
@@ -305,7 +339,17 @@ function showAnswerFeedback() {
     }
   });
 
-  els.explanationText.textContent = question.explanation;
+  const hasSourceText = Boolean(question.source && question.source.trim());
+  const sourceText = hasSourceText ? question.source.trim() : 'Fonte não informada.';
+
+  els.explanationText.textContent = question.explanation || 'Sem justificativa cadastrada.';
+  els.questionSource.textContent = sourceText;
+  els.questionSource.removeAttribute('href');
+
+  if (question.sourceUrl) {
+    els.questionSource.innerHTML = `<a href="${question.sourceUrl}" target="_blank" rel="noreferrer noopener">${sourceText}</a>`;
+  }
+
   els.explanationBox.classList.remove('hidden');
   els.confirmButton.textContent = state.currentQuestionIndex === questions.length - 1 ? 'Ver resultado' : 'Próxima questão';
 }
@@ -331,9 +375,6 @@ function updateGlobalRanking() {
 }
 
 async function finishQuiz() {
-  if (state.isSubmitting) return;
-  state.isSubmitting = true;
-
   updateGlobalRanking();
 
   try {
@@ -348,18 +389,24 @@ async function finishQuiz() {
       })
     });
 
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      throw new Error(errorText || `status ${response.status}`);
+    }
+
     await renderSidebarRanking();
   } catch (error) {
     console.error('Não foi possível salvar o resultado no banco:', error);
     renderSidebarRanking();
-  } finally {
-    state.isSubmitting = false;
   }
 
   els.finalScore.textContent = `${state.score} / ${questions.length}`;
   showScreen('final');
 }
 
+// ==========================================================
+// Fluxo do quiz
+// ==========================================================
 function nextStep() {
   if (!state.answered) {
     alert('Selecione uma alternativa antes de confirmar.');
@@ -376,53 +423,20 @@ function nextStep() {
   finishQuiz();
 }
 
-// ==========================================================
-// Início do Quiz - Consulta a rota /api/validar_nome_exclusivo
-// ==========================================================
-async function startQuiz() {
-  if (!questions.length) { 
-    alert('As perguntas ainda não foram carregadas.'); 
-    return; 
-  }
+function startQuiz() {
+  if (!questions.length) { alert('As perguntas ainda não foram carregadas.'); return; }
+  const name = els.playerNameInput.value.trim();
 
-  const nameInput = els.playerNameInput.value.trim();
-
-  if (!nameInput) {
+  if (!name) {
     els.playerNameInput.focus();
     els.playerNameInput.placeholder = 'Digite seu nickname antes de iniciar';
     return;
   }
 
-  els.startQuizButton.disabled = true;
-  els.startQuizButton.textContent = 'Verificando nome no banco...';
-
-  try {
-    // Consulta exatamente o nome da tua rota: validar_nome_exclusivo
-    const resposta = await fetch(`/api/validar_nome_exclusivo?nome=${encodeURIComponent(nameInput)}`);
-    if (resposta.ok) {
-      const resultado = await resposta.json();
-      if (resultado.existe) {
-        alert(`⚠️ O nickname "${nameInput}" já está cadastrado no banco de dados por outro jogador!
-Por favor, digite um nome diferente para poder jogar.`);
-        els.playerNameInput.focus();
-        els.playerNameInput.select();
-        els.startQuizButton.disabled = false;
-        els.startQuizButton.textContent = 'Começar quiz';
-        return; // BLOQUEIA ABSOLUTAMENTE O INÍCIO DO QUIZ
-      }
-    }
-  } catch (err) {
-    console.warn('Erro ao checar nome existente no banco:', err);
-  }
-
-  els.startQuizButton.disabled = false;
-  els.startQuizButton.textContent = 'Começar quiz';
-
-  state.playerName = nameInput;
+  state.playerName = name;
   state.currentQuestionIndex = 0;
   state.score = 0;
   state.userAnswers = [];
-  state.isSubmitting = false;
   renderQuestion();
   showScreen('quiz');
 }
@@ -432,7 +446,6 @@ Por favor, digite um nome diferente para poder jogar.`);
 // ==========================================================
 els.difficultySelect.addEventListener('change', carregarPerguntasDoBanco);
 els.startQuizButton.addEventListener('click', startQuiz);
-
 els.confirmButton.addEventListener('click', () => {
   if (state.selectedAnswerIndex === null) {
     alert('Selecione uma alternativa antes de confirmar.');
@@ -466,7 +479,6 @@ els.confirmButton.addEventListener('click', () => {
   state.answered = true;
   showAnswerFeedback();
 });
-
 els.finalButton.addEventListener('click', () => {
   els.playerNameInput.value = '';
   els.playerNameInput.placeholder = 'Digite seu nickname';
@@ -474,7 +486,6 @@ els.finalButton.addEventListener('click', () => {
   state.score = 0;
   state.userAnswers = [];
   state.playerName = '';
-  state.isSubmitting = false;
   renderSidebarRanking();
   showScreen('intro');
 });
@@ -550,3 +561,4 @@ els.playerNameInput.addEventListener('keydown', (event) => {
     startQuiz();
   }
 });
+
