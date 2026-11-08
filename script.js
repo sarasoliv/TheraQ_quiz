@@ -62,7 +62,7 @@ async function carregarPerguntasDoBanco() {
       throw new Error(`Nenhuma pergunta encontrada para o nível "${dificuldadeEscolhida}".`);
     }
 
-    // Mapeia e normaliza os dados vindos da API com garantia da explicação e fonte
+    // Mapeia e garante a exibição da explicação e fonte
     const availableQuestions = dados
       .map((item) => {
         const justificativa = item.justificativa_resposta || item.explicacao || '';
@@ -118,7 +118,7 @@ const state = {
   playerName: '',
   score: 0,
   userAnswers: [],
-  isSubmitting: false // Trava de segurança contra envios triplicados
+  isSubmitting: false
 };
 
 const answerAudio = {
@@ -144,12 +144,7 @@ function playAnswerSound(isCorrect) {
 const readStorage = (key) => {
   const stored = localStorage.getItem(key);
   if (!stored) return [];
-
-  try {
-    return JSON.parse(stored);
-  } catch {
-    return [];
-  }
+  try { return JSON.parse(stored); } catch { return []; }
 };
 
 const writeStorage = (key, value) => localStorage.setItem(key, JSON.stringify(value));
@@ -192,9 +187,7 @@ function normalizeRankingEntry(entry) {
   const scoreValue = Number(entry?.score ?? entry?.pontuacao_jogador ?? 0);
   const score = Number.isFinite(scoreValue) ? scoreValue : 0;
 
-  if (!nickname || !Number.isFinite(score)) {
-    return null;
-  }
+  if (!nickname || !Number.isFinite(score)) return null;
 
   return { nickname, score };
 }
@@ -202,25 +195,18 @@ function normalizeRankingEntry(entry) {
 async function fetchGlobalRanking() {
   try {
     const response = await fetch('/api/ranking', { cache: 'no-store' });
-    if (!response.ok) {
-      throw new Error(`status ${response.status}`);
-    }
-
+    if (!response.ok) throw new Error(`status ${response.status}`);
     const data = await response.json();
-    return (Array.isArray(data) ? data : [])
-      .map(normalizeRankingEntry)
-      .filter(Boolean);
+    return (Array.isArray(data) ? data : []).map(normalizeRankingEntry).filter(Boolean);
   } catch (error) {
-    console.warn('Não foi possível carregar o ranking global. Usando cache local:', error);
+    console.warn('Não foi possível carregar o ranking global:', error);
     return [];
   }
 }
 
 async function renderSidebarRanking() {
   const globalRanking = await fetchGlobalRanking();
-  const localRanking = getRanking()
-    .map(normalizeRankingEntry)
-    .filter(Boolean);
+  const localRanking = getRanking().map(normalizeRankingEntry).filter(Boolean);
 
   const rankingList = globalRanking.length ? globalRanking : localRanking;
   const sortedRanking = [...rankingList].sort((a, b) => b.score - a.score || a.nickname.localeCompare(b.nickname));
@@ -319,7 +305,6 @@ function showAnswerFeedback() {
     }
   });
 
-  // Restaura a exibição correta da justificativa e fonte vinda do banco
   els.explanationText.textContent = question.explanation;
   els.explanationBox.classList.remove('hidden');
   els.confirmButton.textContent = state.currentQuestionIndex === questions.length - 1 ? 'Ver resultado' : 'Próxima questão';
@@ -346,7 +331,6 @@ function updateGlobalRanking() {
 }
 
 async function finishQuiz() {
-  // Trava de segurança para impedir requisições duplicadas (envios triplicados)
   if (state.isSubmitting) return;
   state.isSubmitting = true;
 
@@ -364,19 +348,12 @@ async function finishQuiz() {
       })
     });
 
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      if (response.status === 409 || (data.error && data.error.includes('já está em uso'))) {
-        alert(`⚠️ O nome "${state.playerName}" já foi registrado no banco de dados por outro jogador!`);
-      }
-    }
-
     await renderSidebarRanking();
   } catch (error) {
     console.error('Não foi possível salvar o resultado no banco:', error);
     renderSidebarRanking();
   } finally {
-    state.isSubmitting = false; // Libera após concluir
+    state.isSubmitting = false;
   }
 
   els.finalScore.textContent = `${state.score} / ${questions.length}`;
@@ -399,6 +376,9 @@ function nextStep() {
   finishQuiz();
 }
 
+// ==========================================================
+// Início do Quiz - Consulta a rota /api/validar_nome_exclusivo
+// ==========================================================
 async function startQuiz() {
   if (!questions.length) { 
     alert('As perguntas ainda não foram carregadas.'); 
@@ -414,19 +394,21 @@ async function startQuiz() {
   }
 
   els.startQuizButton.disabled = true;
-  els.startQuizButton.textContent = 'Verificando nome...';
+  els.startQuizButton.textContent = 'Verificando nome no banco...';
 
   try {
-    const resposta = await fetch(`/api/validar-nome?nome=${encodeURIComponent(nameInput)}`);
+    // Consulta exatamente o nome da tua rota: validar_nome_exclusivo
+    const resposta = await fetch(`/api/validar_nome_exclusivo?nome=${encodeURIComponent(nameInput)}`);
     if (resposta.ok) {
       const resultado = await resposta.json();
       if (resultado.existe) {
-        alert(`⚠️ O nickname "${nameInput}" já está cadastrado no banco de dados por outro jogador!\nPor favor, digite um nome diferente para poder jogar.`);
+        alert(`⚠️ O nickname "${nameInput}" já está cadastrado no banco de dados por outro jogador!
+Por favor, digite um nome diferente para poder jogar.`);
         els.playerNameInput.focus();
         els.playerNameInput.select();
         els.startQuizButton.disabled = false;
         els.startQuizButton.textContent = 'Começar quiz';
-        return;
+        return; // BLOQUEIA ABSOLUTAMENTE O INÍCIO DO QUIZ
       }
     }
   } catch (err) {
@@ -446,14 +428,10 @@ async function startQuiz() {
 }
 
 // ==========================================================
-// Eventos e inicialização (Garantindo apenas 1 listener por evento)
+// Eventos e inicialização
 // ==========================================================
 els.difficultySelect.addEventListener('change', carregarPerguntasDoBanco);
-
-// Remove event listeners duplicados antigos se existirem clonando o botão
-const novoBotaoConfirmar = els.confirmButton.cloneNode(true);
-els.confirmButton.parentNode.replaceChild(novoBotaoConfirmar, els.confirmButton);
-els.confirmButton = novoBotaoConfirmar;
+els.startQuizButton.addEventListener('click', startQuiz);
 
 els.confirmButton.addEventListener('click', () => {
   if (state.selectedAnswerIndex === null) {
