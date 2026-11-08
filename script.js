@@ -19,7 +19,6 @@ const els = {
   answersContainer: document.getElementById('answers-container'),
   explanationBox: document.getElementById('explanation-box'),
   explanationText: document.getElementById('explanation-text'),
-  questionSource: document.getElementById('question-source'),
   finalScore: document.getElementById('final-score'),
   finalRankingList: document.getElementById('final-ranking-list'),
   sessionRankingList: document.getElementById('session-ranking-list'),
@@ -70,9 +69,7 @@ async function carregarPerguntasDoBanco() {
         question: item.enunciado,
         options: item.alternativas,
         correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta || '').toUpperCase()),
-        explanation: item.justificativa_pergunta || item.justificativa_resposta || item.explicacao || 'Justificativa não cadastrada.',
-        source: item.referencia || item.fonte || 'Fonte não cadastrada',
-        sourceUrl: item.fonte_url || null,
+        explanation: item.justificativa_resposta || item.explicacao || `Fonte: ${item.referencia || 'material de referência'}.`,
         difficulty: String(item.dificuldade_nivel || '')
           .normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '')
@@ -107,7 +104,6 @@ async function carregarPerguntasDoBanco() {
     alert(erro.message || 'A dificuldade selecionada precisa ter pelo menos 10 perguntas válidas no banco para iniciar o quiz.');
   }
 }
-
 // ==========================================================
 // Estado atual da partida
 // ==========================================================
@@ -169,30 +165,28 @@ const readStorage = (key) => {
 const writeStorage = (key, value) => localStorage.setItem(key, JSON.stringify(value));
 const getRanking = () => readStorage(RANKING_KEY);
 const saveRanking = (ranking) => writeStorage(RANKING_KEY, ranking);
-
 const updateTopbar = () => {
-  if (els.topbarStatus) {
-    els.topbarStatus.textContent = `${state.currentQuestionIndex + 1} / ${questions.length || 10}`;
-  }
+  els.topbarStatus.textContent = `${state.currentQuestionIndex + 1} / ${questions.length}`;
 };
 
 // ==========================================================
 // Navegação entre telas
 // ==========================================================
+
 function showScreen(screenName) {
   Object.entries({ intro: els.introScreen, quiz: els.quizScreen, final: els.finalScreen })
-    .forEach(([name, el]) => el?.classList.toggle('active', name === screenName));
+    .forEach(([name, el]) => el.classList.toggle('active', name === screenName));
 
-  els.sidebar?.classList.remove('hidden');
-  els.mainLayout?.classList.remove('single-column');
+  els.sidebar.classList.remove('hidden');
+  els.mainLayout.classList.remove('single-column');
 
   if (screenName === 'quiz') {
-    els.sidebar?.classList.add('hidden');
-    els.mainLayout?.classList.add('single-column');
-    els.statusPill?.classList.remove('hidden');
+    els.sidebar.classList.add('hidden');
+    els.mainLayout.classList.add('single-column');
+    els.statusPill.classList.remove('hidden');
     updateTopbar();
   } else {
-    els.statusPill?.classList.add('hidden');
+    els.statusPill.classList.add('hidden');
   }
 }
 
@@ -235,8 +229,6 @@ async function fetchGlobalRanking() {
 }
 
 async function renderSidebarRanking() {
-  if (!els.sessionRankingList) return;
-
   const globalRanking = await fetchGlobalRanking();
   const localRanking = getRanking()
     .map(normalizeRankingEntry)
@@ -286,11 +278,8 @@ function renderQuestion() {
 
   els.questionText.textContent = question.question;
   updateTopbar();
-
   els.explanationBox.classList.add('hidden');
   els.explanationText.textContent = '';
-  if (els.questionSource) els.questionSource.replaceChildren();
-
   els.confirmButton.textContent = 'Confirmar resposta';
   els.confirmButton.disabled = false;
   els.answersContainer.innerHTML = '';
@@ -306,7 +295,6 @@ function renderQuestion() {
     input.type = 'radio';
     input.name = 'answer';
     input.value = index;
-
     input.addEventListener('change', ({ target }) => {
       state.selectedAnswerIndex = Number(target.value);
       document.querySelectorAll('.option-item').forEach((item) => {
@@ -329,50 +317,26 @@ function renderQuestion() {
 // ==========================================================
 function showAnswerFeedback() {
   const question = questions[state.currentQuestionIndex];
-
   document.querySelectorAll('.option-item').forEach((item, index) => {
     const input = item.querySelector('input');
     const status = item.querySelector('.option-status');
-
     input.disabled = true;
     item.classList.remove('selected', 'correct', 'wrong');
 
-    if (Number(input.value) === state.selectedAnswerIndex) {
-      item.classList.add('selected');
-    }
-
+    if (Number(input.value) === state.selectedAnswerIndex) item.classList.add('selected');
     if (index === question.correctIndex) {
       item.classList.add('correct');
       status.textContent = 'Correta';
     }
-
     if (index === state.selectedAnswerIndex && index !== question.correctIndex) {
       item.classList.add('wrong');
       status.textContent = 'Incorreta';
     }
   });
 
-  // Exibe a justificativa da resposta
   els.explanationText.textContent = question.explanation;
-
-  // Exibe a fonte bibliográfica separada
-  if (els.questionSource) {
-    els.questionSource.replaceChildren();
-
-    if (question.sourceUrl) {
-      const link = document.createElement('a');
-      link.href = question.sourceUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.textContent = question.source;
-      els.questionSource.appendChild(link);
-    } else {
-      els.questionSource.textContent = question.source;
-    }
-  }
-
-  // Mostra a caixa de explicação e fonte na interface
   els.explanationBox.classList.remove('hidden');
+  els.confirmButton.textContent = state.currentQuestionIndex === questions.length - 1 ? 'Ver resultado' : 'Próxima questão';
 }
 
 function updateGlobalRanking() {
@@ -385,14 +349,12 @@ function updateGlobalRanking() {
 
   saveRanking(ranking);
 
-  if (els.finalRankingList) {
-    els.finalRankingList.innerHTML = '';
-    ranking.slice(0, 5).forEach((item, index) => {
-      const li = document.createElement('li');
-      li.innerHTML = `<span>${index + 1}. ${item.nickname}</span><strong>${item.score} pts</strong>`;
-      els.finalRankingList.appendChild(li);
-    });
-  }
+  els.finalRankingList.innerHTML = '';
+  ranking.slice(0, 5).forEach((item, index) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${index + 1}. ${item.nickname}</span><strong>${item.score} pts</strong>`;
+    els.finalRankingList.appendChild(li);
+  });
 
   return ranking;
 }
@@ -419,13 +381,11 @@ async function finishQuiz() {
 
     await renderSidebarRanking();
   } catch (error) {
-    console.warn('Não foi possível salvar o resultado no banco:', error);
+    console.error('Não foi possível salvar o resultado no banco:', error);
     renderSidebarRanking();
   }
 
-  if (els.finalScore) {
-    els.finalScore.textContent = `${state.score} / ${questions.length}`;
-  }
+  els.finalScore.textContent = `${state.score} / ${questions.length}`;
   showScreen('final');
 }
 
@@ -449,11 +409,8 @@ function nextStep() {
 }
 
 function startQuiz() {
-  if (!questions.length) { 
-    alert('As perguntas ainda não foram carregadas.'); 
-    return; 
-  }
-  const name = els.playerNameInput?.value.trim();
+  if (!questions.length) { alert('As perguntas ainda não foram carregadas.'); return; }
+  const name = els.playerNameInput.value.trim();
 
   if (!name) {
     els.playerNameInput.focus();
@@ -472,65 +429,51 @@ function startQuiz() {
 // ==========================================================
 // Eventos e inicialização
 // ==========================================================
-if (els.difficultySelect) {
-  els.difficultySelect.addEventListener('change', carregarPerguntasDoBanco);
-}
+els.difficultySelect.addEventListener('change', carregarPerguntasDoBanco);
+els.startQuizButton.addEventListener('click', startQuiz);
+els.confirmButton.addEventListener('click', () => {
+  if (state.selectedAnswerIndex === null) {
+    alert('Selecione uma alternativa antes de confirmar.');
+    return;
+  }
 
-if (els.startQuizButton) {
-  els.startQuizButton.addEventListener('click', startQuiz);
-}
+  if (state.answered) {
+    nextStep();
+    return;
+  }
 
-if (els.confirmButton) {
-  els.confirmButton.addEventListener('click', () => {
-    if (state.selectedAnswerIndex === null) {
-      alert('Selecione uma alternativa antes de confirmar.');
-      return;
-    }
+  const currentQ = questions[state.currentQuestionIndex];
+  const isCorrectAnswer = state.selectedAnswerIndex === currentQ.correctIndex;
+  
+  const letras = ['A', 'B', 'C', 'D', 'E'];
+  const respostaLetra = letras[state.selectedAnswerIndex] || 'A';
 
-    if (state.answered) {
-      nextStep();
-      return;
-    }
-
-    const currentQ = questions[state.currentQuestionIndex];
-    const isCorrectAnswer = state.selectedAnswerIndex === currentQ.correctIndex;
-    
-    const letras = ['A', 'B', 'C', 'D', 'E'];
-    const respostaLetra = letras[state.selectedAnswerIndex] || 'A';
-
-    state.userAnswers.push({
-      questao_id: currentQ.id,
-      resposta_usuario: respostaLetra,
-      acerto: isCorrectAnswer
-    });
-
-    if (isCorrectAnswer) {
-      state.score += 1;
-      playAnswerSound(true);
-    } else {
-      playAnswerSound(false);
-    }
-
-    state.answered = true;
-    showAnswerFeedback();
-    els.confirmButton.textContent = 'Próxima pergunta';
+  state.userAnswers.push({
+    questao_id: currentQ.id,
+    resposta_usuario: respostaLetra,
+    acerto: isCorrectAnswer
   });
-}
 
-if (els.finalButton) {
-  els.finalButton.addEventListener('click', () => {
-    if (els.playerNameInput) {
-      els.playerNameInput.value = '';
-      els.playerNameInput.placeholder = 'Digite seu nickname';
-    }
-    state.currentQuestionIndex = 0;
-    state.score = 0;
-    state.userAnswers = [];
-    state.playerName = '';
-    renderSidebarRanking();
-    showScreen('intro');
-  });
-}
+  if (isCorrectAnswer) {
+    state.score += 1;
+    playAnswerSound(true);
+  } else {
+    playAnswerSound(false);
+  }
+
+  state.answered = true;
+  showAnswerFeedback();
+});
+els.finalButton.addEventListener('click', () => {
+  els.playerNameInput.value = '';
+  els.playerNameInput.placeholder = 'Digite seu nickname';
+  state.currentQuestionIndex = 0;
+  state.score = 0;
+  state.userAnswers = [];
+  state.playerName = '';
+  renderSidebarRanking();
+  showScreen('intro');
+});
 
 function initializeAccessibilityControls() {
   const body = document.body;
@@ -548,10 +491,8 @@ function initializeAccessibilityControls() {
 
   const applyContrast = (enabled) => {
     body.classList.toggle('high-contrast', enabled);
-    if (els.highContrastToggle) {
-      els.highContrastToggle.classList.toggle('is-active', enabled);
-      els.highContrastToggle.setAttribute('aria-pressed', String(enabled));
-    }
+    els.highContrastToggle.classList.toggle('is-active', enabled);
+    els.highContrastToggle.setAttribute('aria-pressed', String(enabled));
   };
 
   const applyDaltonism = (mode) => {
@@ -573,44 +514,35 @@ function initializeAccessibilityControls() {
     });
   });
 
-  if (els.highContrastToggle) {
-    els.highContrastToggle.addEventListener('click', () => {
-      const enabled = !body.classList.contains('high-contrast');
-      applyContrast(enabled);
-    });
-  }
+  els.highContrastToggle.addEventListener('click', () => {
+    const enabled = !body.classList.contains('high-contrast');
+    applyContrast(enabled);
+  });
 
-  if (els.daltonismControl) {
-    els.daltonismControl.addEventListener('change', (event) => {
-      applyDaltonism(event.target.value);
-    });
-  }
+  els.daltonismControl.addEventListener('change', (event) => {
+    applyDaltonism(event.target.value);
+  });
 
-  if (els.volumeControl) {
-    els.volumeControl.addEventListener('input', (event) => {
-      const value = Number(event.target.value);
-      event.target.style.setProperty('--volume', String(value));
-      document.body.style.setProperty('--volume-level', value.toFixed(2));
-      answerAudio.correct.volume = value;
-      answerAudio.wrong.volume = value;
-    });
-  }
+  els.volumeControl.addEventListener('input', (event) => {
+    const value = Number(event.target.value);
+    event.target.style.setProperty('--volume', String(value));
+    document.body.style.setProperty('--volume-level', value.toFixed(2));
+    answerAudio.correct.volume = value;
+    answerAudio.wrong.volume = value;
+  });
 
   applyTheme('dark');
   applyContrast(false);
   applyDaltonism('none');
 }
 
-// Carrega as perguntas e inicializa o app ao carregar o script
-carregarPerguntasDoBanco();
 showScreen('intro');
 renderSidebarRanking();
+updateTopbar();
 initializeAccessibilityControls();
 
-if (els.playerNameInput) {
-  els.playerNameInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-      startQuiz();
-    }
-  });
-}
+els.playerNameInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    startQuiz();
+  }
+});
