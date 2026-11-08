@@ -42,20 +42,8 @@ module.exports = async function handler(request, response) {
     const { rows } = await pool.query(queryText, [dificuldade]);
 
     const formattedRows = rows.map((q) => ({
-      id: q.id,
-      enunciado: q.enunciado,
-      resposta_correta: q.resposta_correta,
-      dificuldade_nivel: q.dificuldade_nivel,
-      justificativa: q.justificativa_resposta,
-      fonte: q.referencia,
-      fonte_url: q.fonte_url,
-      alternativas: [
-        q.opcao_a,
-        q.opcao_b,
-        q.opcao_c,
-        q.opcao_d,
-        q.opcao_e
-      ].filter(Boolean) // Remove opções nulas caso alguma pergunta tenha menos de 5 opções
+      ...q,
+      alternativas: [q.opcao_a, q.opcao_b, q.opcao_c, q.opcao_d, q.opcao_e]
     }));
 
     return response.status(200).json(formattedRows);
