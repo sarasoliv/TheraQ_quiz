@@ -63,30 +63,21 @@ async function carregarPerguntasDoBanco() {
     }
 
     // Mapeia e normaliza os dados vindos da API
-   const availableQuestions = dados
-  .map((item) => ({
-    id: item.id,
-    question: item.enunciado,
-    options: item.alternativas,
+    const availableQuestions = dados
+      .map((item) => ({
+        id: item.id,
+        question: item.enunciado,
+        options: item.alternativas,
+        correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta || '').toUpperCase()),
+        explanation: item.justificativa_resposta || item.explicacao || `Fonte: ${item.referencia || 'material de referência'}.`,
+        difficulty: String(item.dificuldade_nivel || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .trim()
+      }))
+      .filter((item) => item.question && item.options.length >= 2 && item.correctIndex >= 0);
 
-    correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(
-      String(item.resposta_correta || '').toUpperCase().trim()
-    ),
-
-    explanation: item.justificativa_resposta ||
-      'Justificativa não cadastrada.',
-
-    source: item.referencia || 'Fonte não cadastrada',
-    sourceUrl: item.fonte_url || null,
-
-    difficulty: normalizeDifficulty(item.dificuldade_nivel)
-  }))
-  .filter((item) =>
-    item.question &&
-    Array.isArray(item.options) &&
-    item.options.length >= 2 &&
-    item.correctIndex >= 0
-  );
     // 🔒 BLOQUEIO ABSOLUTO: Garante de forma estrita que NENHUMA pergunta de outro nível passe
     const perguntasDoNivelExato = availableQuestions.filter((item) => {
       return item.difficulty === dificuldadeEscolhida;
@@ -121,7 +112,8 @@ const state = {
   selectedAnswerIndex: null,
   answered: false,
   playerName: '',
-  score: 0
+  score: 0,
+  userAnswers: []
 };
 
 const answerAudio = {
@@ -374,7 +366,12 @@ async function finishQuiz() {
     const response = await fetch('/api/resultados', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nome_usuario: state.playerName, total_acertos: state.score, pontuacao_final: state.score })
+      body: JSON.stringify({
+        nome_usuario: state.playerName,
+        total_acertos: state.score,
+        pontuacao_final: state.score,
+        questoes_respondidas: state.userAnswers
+      })
     });
 
     if (!response.ok) {
@@ -424,6 +421,7 @@ function startQuiz() {
   state.playerName = name;
   state.currentQuestionIndex = 0;
   state.score = 0;
+  state.userAnswers = [];
   renderQuestion();
   showScreen('quiz');
 }
@@ -444,7 +442,18 @@ els.confirmButton.addEventListener('click', () => {
     return;
   }
 
-  const isCorrectAnswer = state.selectedAnswerIndex === questions[state.currentQuestionIndex].correctIndex;
+  const currentQ = questions[state.currentQuestionIndex];
+  const isCorrectAnswer = state.selectedAnswerIndex === currentQ.correctIndex;
+  
+  const letras = ['A', 'B', 'C', 'D', 'E'];
+  const respostaLetra = letras[state.selectedAnswerIndex] || 'A';
+
+  state.userAnswers.push({
+    questao_id: currentQ.id,
+    resposta_usuario: respostaLetra,
+    acerto: isCorrectAnswer
+  });
+
   if (isCorrectAnswer) {
     state.score += 1;
     playAnswerSound(true);
@@ -460,6 +469,7 @@ els.finalButton.addEventListener('click', () => {
   els.playerNameInput.placeholder = 'Digite seu nickname';
   state.currentQuestionIndex = 0;
   state.score = 0;
+  state.userAnswers = [];
   state.playerName = '';
   renderSidebarRanking();
   showScreen('intro');
