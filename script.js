@@ -63,42 +63,20 @@ async function carregarPerguntasDoBanco() {
     }
 
     // Mapeia e normaliza os dados vindos da API
-  const availableQuestions = dados
-  .map((item) => ({
-    id: item.id,
-    question: item.enunciado,
-    options: item.alternativas,
-
-    correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(
-      String(item.resposta_correta || '').toUpperCase().trim()
-    ),
-
-    // Justificativa exclusiva da resposta correta
-    explanation: item.justificativa_pergunta ||
-      "Justificativa não cadastrada para esta questão.",
-
-    // Fonte bibliográfica
-    source: item.referencia || "Fonte não cadastrada",
-    sourceUrl: item.fonte_url || null,
-
-    // Dificuldade normalizada para permitir a comparação
-    difficulty: String(item.dificuldade_nivel || '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .trim()
-  }))
-  .filter((item) =>
-    item.question &&
-    Array.isArray(item.options) &&
-    item.options.length >= 2 &&
-    item.correctIndex >= 0
-  );
-
-// Bloqueio: somente perguntas da dificuldade selecionada
-const perguntasDoNivelExato = availableQuestions.filter((item) => {
-  return item.difficulty === dificuldadeEscolhida;
-});
+    const availableQuestions = dados
+      .map((item) => ({
+        id: item.id,
+        question: item.enunciado,
+        options: item.alternativas,
+        correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta || '').toUpperCase()),
+        explanation: item.justificativa_resposta || item.explicacao || `Fonte: ${item.referencia || 'material de referência'}.`,
+        difficulty: String(item.dificuldade_nivel || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .trim()
+      }))
+      .filter((item) => item.question && item.options.length >= 2 && item.correctIndex >= 0);
 
     // 🔒 BLOQUEIO ABSOLUTO: Garante de forma estrita que NENHUMA pergunta de outro nível passe
     const perguntasDoNivelExato = availableQuestions.filter((item) => {
@@ -214,17 +192,50 @@ function showScreen(screenName) {
 // ==========================================================
 // Ranking e renderização da interface
 // ==========================================================
-async function renderSidebarRanking() {
-  let rankingFromDatabase = [];
-  try {
-    const response = await fetch('/api/ranking');
-    if (response.ok) rankingFromDatabase = await response.json();
-  } catch (error) {
-    console.warn('Usando ranking local:', error);
+function normalizeRankingEntry(entry) {
+  const nickname = typeof entry?.nickname === 'string'
+    ? entry.nickname.trim()
+    : typeof entry?.nome_jogador === 'string'
+      ? entry.nome_jogador.trim()
+      : '';
+
+  const scoreValue = Number(entry?.score ?? entry?.pontuacao_jogador ?? 0);
+  const score = Number.isFinite(scoreValue) ? scoreValue : 0;
+
+  if (!nickname || !Number.isFinite(score)) {
+    return null;
   }
-  const ranking = (rankingFromDatabase.length ? rankingFromDatabase : getRanking())
-    .filter((entry) => entry && entry.nickname)
+
+  return { nickname, score };
+}
+
+async function fetchGlobalRanking() {
+  try {
+    const response = await fetch('/api/ranking', { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error(`status ${response.status}`);
+    }
+
+    const data = await response.json();
+    return (Array.isArray(data) ? data : [])
+      .map(normalizeRankingEntry)
+      .filter(Boolean)
+      .sort((a, b) => b.score - a.score || a.nickname.localeCompare(b.nickname));
+  } catch (error) {
+    console.warn('Não foi possível carregar o ranking global. Usando cache local apenas:', error);
+    return [];
+  }
+}
+
+async function renderSidebarRanking() {
+  const globalRanking = await fetchGlobalRanking();
+  const localRanking = getRanking()
+    .map(normalizeRankingEntry)
+    .filter(Boolean)
     .sort((a, b) => b.score - a.score || a.nickname.localeCompare(b.nickname));
+
+  const ranking = globalRanking.length ? globalRanking : localRanking;
+  const usingLocalFallback = globalRanking.length === 0 && localRanking.length > 0;
 
   els.sessionRankingList.innerHTML = '';
 
@@ -248,6 +259,15 @@ async function renderSidebarRanking() {
     `;
     els.sessionRankingList.appendChild(item);
   });
+
+  if (usingLocalFallback) {
+    const notice = document.createElement('li');
+    notice.className = 'local-ranking-warning';
+    notice.textContent = 'Ranking local: servidor indisponível';
+    notice.style.fontSize = '0.72rem';
+    notice.style.opacity = '0.8';
+    els.sessionRankingList.appendChild(notice);
+  }
 }
 
 function renderQuestion() {
@@ -320,13 +340,13 @@ function showAnswerFeedback() {
 
 function updateGlobalRanking() {
   const ranking = getRanking()
-    .filter((entry) => entry && entry.nickname)
+    .map(normalizeRankingEntry)
+    .filter(Boolean)
     .concat({ nickname: state.playerName, score: state.score })
     .filter((entry, index, array) => array.findIndex((item) => item.nickname.toLowerCase() === entry.nickname.toLowerCase()) === index)
     .sort((a, b) => b.score - a.score || a.nickname.localeCompare(b.nickname));
 
   saveRanking(ranking);
-  renderSidebarRanking();
 
   els.finalRankingList.innerHTML = '';
   ranking.slice(0, 5).forEach((item, index) => {
@@ -334,20 +354,31 @@ function updateGlobalRanking() {
     li.innerHTML = `<span>${index + 1}. ${item.nickname}</span><strong>${item.score} pts</strong>`;
     els.finalRankingList.appendChild(li);
   });
+
+  return ranking;
 }
 
 async function finishQuiz() {
   updateGlobalRanking();
+
   try {
     const response = await fetch('/api/resultados', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nome_usuario: state.playerName, total_acertos: state.score, pontuacao_final: state.score })
     });
-    if (!response.ok) console.error('O servidor não conseguiu salvar o resultado.');
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      throw new Error(errorText || `status ${response.status}`);
+    }
+
+    await renderSidebarRanking();
   } catch (error) {
     console.error('Não foi possível salvar o resultado no banco:', error);
+    renderSidebarRanking();
   }
+
   els.finalScore.textContent = `${state.score} / ${questions.length}`;
   showScreen('final');
 }
