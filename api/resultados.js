@@ -2,6 +2,7 @@ const { Pool } = require("pg");
 let pool;
 
 module.exports = async function handler(req, res) {
+  // Configuração de CORS para permitir requisições do frontend
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -23,7 +24,7 @@ module.exports = async function handler(req, res) {
   }
 
   const { nome_usuario, total_acertos, pontuacao_final, questoes_respondidas } = req.body || {};
-  
+
   if (!nome_usuario) {
     return res.status(400).json({ error: 'O nome do usuário é obrigatório.' });
   }
@@ -35,27 +36,27 @@ module.exports = async function handler(req, res) {
     });
 
     const client = await pool.connect();
+    
     try {
       await client.query("BEGIN");
-      
-      // 1. Insere ou atualiza o utilizador
+
+      // 1. Insere ou atualiza o usuário no banco
       const resUser = await client.query(
         "INSERT INTO cadastro_usuario (nome) VALUES ($1) ON CONFLICT (nome) DO UPDATE SET nome = EXCLUDED.nome RETURNING id_usuario",
         [nome_usuario.trim().slice(0, 50)]
       );
-      
+
       const usuarioId = resUser.rows[0].id_usuario;
 
-      // 2. Insere a pontuação no ranking
+      // 2. Insere a pontuação final no ranking
       await client.query(
         "INSERT INTO tabela_ranking (usuario_id, nome_jogador, pontuacao_jogador, total_acertos) VALUES ($1, $2, $3, $4)",
-        [usuarioId, nome_usuario.trim().slice(0, 50), Number(pontuacao_final), Number(total_acertos)]
+        [usuarioId, nome_usuario.trim().slice(0, 50), Number(pontuacao_final || 0), Number(total_acertos || 0)]
       );
 
-      // 3. Insere as questões respondidas (caso venham do front-end)
+      // 3. Insere o histórico de questões respondidas no envio final
       if (Array.isArray(questoes_respondidas) && questoes_respondidas.length > 0) {
         for (const q of questoes_respondidas) {
-          // q deve conter: questao_id, resposta_usuario, acerto
           if (q.questao_id && q.resposta_usuario !== undefined) {
             await client.query(
               `INSERT INTO questoes_respondidas (usuario_id, questao_id, resposta_usuario, acerto) 
@@ -65,16 +66,17 @@ module.exports = async function handler(req, res) {
           }
         }
       }
-      
+
       await client.query("COMMIT");
-      client.release();
+      return res.status(201).json({ success: true, saved: true });
+
     } catch (err) {
       await client.query("ROLLBACK");
-      client.release();
       throw err;
+    } finally {
+      client.release(); // Garante que a conexão do pool é devolvida mesmo em caso de erro
     }
 
-    return res.status(201).json({ success: true, saved: true });
   } catch (error) {
     console.error('Erro ao salvar no banco:', error.message);
     return res.status(500).json({ error: error.message });
