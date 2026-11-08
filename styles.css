@@ -414,10 +414,9 @@ body.theme-light.high-contrast .access-btn:focus-visible {
 }
 
 .brand-logo-image {
-  width: 120px;
-  height: 50px;
+  width: 160px;
+  height: 80px;
   object-fit: contain;
-  filter: drop-shadow(0 0 12px rgba(64, 255, 139, 0.45));
 }
 
 .brand-mark {
@@ -460,8 +459,12 @@ h1, h2, h3, p { margin: 0; }
   color: var(--text);
 }
 .status-pill.hidden, .sidebar.hidden, .explanation-box.hidden { display: none; }
-.status-pill span { color: var(--muted); font-size: 0.8rem; }
-.status-pill strong { color: var(--accent-soft); }
+.status-pill {
+  border-color: #ffff00;
+  box-shadow: 0 0 8px rgba(255, 255, 0, 0.6);
+}
+.status-pill span { color: #fff2a8; font-size: 0.8rem; }
+.status-pill strong { color: #ffff00; }
 
 /* ==========================================================
    Layout principal e telas
@@ -685,10 +688,10 @@ h1, h2, h3, p { margin: 0; }
   gap: 6px;
 }
 .question-source strong {
-  color: var(--accent-soft);
+  color: #ffff00;
 }
 .question-source a {
-  color: var(--accent);
+  color: #ffff00;
   word-break: break-word;
 }
 
