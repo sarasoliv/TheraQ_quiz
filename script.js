@@ -423,7 +423,7 @@ function nextStep() {
   finishQuiz();
 }
 
-function startQuiz() {
+async function startQuiz() {
   if (!questions.length) { alert('As perguntas ainda não foram carregadas.'); return; }
   const name = els.playerNameInput.value.trim();
 
@@ -432,6 +432,30 @@ function startQuiz() {
     els.playerNameInput.placeholder = 'Digite seu nickname antes de iniciar';
     return;
   }
+
+  // Validação de nome existente no banco de dados
+  els.startQuizButton.disabled = true;
+  const originalButtonText = els.startQuizButton.textContent;
+  els.startQuizButton.textContent = 'Verificando nome...';
+
+  try {
+    const response = await fetch(`/api/validar_nome_exclusivo?nome=${encodeURIComponent(name)}`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.existe) {
+        alert('Este nome já está cadastrado no banco de dados. Escolha outro nickname para continuar.');
+        els.playerNameInput.focus();
+        els.startQuizButton.disabled = false;
+        els.startQuizButton.textContent = originalButtonText;
+        return;
+      }
+    }
+  } catch (error) {
+    console.error('Erro ao verificar disponibilidade do nome:', error);
+  }
+
+  els.startQuizButton.disabled = false;
+  els.startQuizButton.textContent = originalButtonText;
 
   state.playerName = name;
   state.currentQuestionIndex = 0;
@@ -561,4 +585,3 @@ els.playerNameInput.addEventListener('keydown', (event) => {
     startQuiz();
   }
 });
-
