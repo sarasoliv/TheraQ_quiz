@@ -19,6 +19,7 @@ const els = {
   answersContainer: document.getElementById('answers-container'),
   explanationBox: document.getElementById('explanation-box'),
   explanationText: document.getElementById('explanation-text'),
+  questionSource: document.getElementById('question-source'),
   finalScore: document.getElementById('final-score'),
   finalRankingList: document.getElementById('final-ranking-list'),
   sessionRankingList: document.getElementById('session-ranking-list'),
@@ -69,7 +70,9 @@ async function carregarPerguntasDoBanco() {
         question: item.enunciado,
         options: item.alternativas,
         correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta || '').toUpperCase()),
-        explanation: item.justificativa_resposta || item.explicacao || `Fonte: ${item.referencia || 'material de referência'}.`,
+        explanation: item.justificativa_resposta || item.explicacao || 'Sem justificativa cadastrada.',
+        source: item.referencia || item.fonte_url || 'Fonte não informada.',
+        sourceUrl: item.fonte_url || '',
         difficulty: String(item.dificuldade_nivel || '')
           .normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '')
@@ -280,6 +283,8 @@ function renderQuestion() {
   updateTopbar();
   els.explanationBox.classList.add('hidden');
   els.explanationText.textContent = '';
+  els.questionSource.textContent = '';
+  els.questionSource.removeAttribute('href');
   els.confirmButton.textContent = 'Confirmar resposta';
   els.confirmButton.disabled = false;
   els.answersContainer.innerHTML = '';
@@ -334,7 +339,17 @@ function showAnswerFeedback() {
     }
   });
 
-  els.explanationText.textContent = question.explanation;
+  const hasSourceText = Boolean(question.source && question.source.trim());
+  const sourceText = hasSourceText ? question.source.trim() : 'Fonte não informada.';
+
+  els.explanationText.textContent = question.explanation || 'Sem justificativa cadastrada.';
+  els.questionSource.textContent = sourceText;
+  els.questionSource.removeAttribute('href');
+
+  if (question.sourceUrl) {
+    els.questionSource.innerHTML = `<a href="${question.sourceUrl}" target="_blank" rel="noreferrer noopener">${sourceText}</a>`;
+  }
+
   els.explanationBox.classList.remove('hidden');
   els.confirmButton.textContent = state.currentQuestionIndex === questions.length - 1 ? 'Ver resultado' : 'Próxima questão';
 }
