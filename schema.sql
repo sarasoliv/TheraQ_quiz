@@ -81,7 +81,7 @@ INSERT INTO opcao_questoes (opcao_a, opcao_b, opcao_c, opcao_d, opcao_e) VALUES
 ('Interrompiam as vendas imediatamente.', 'Afirmavam que era impossível haver overdose por software e atribuíam ao erro do operador.', 'Contratavam auditorias externas no mesmo dia.', 'Substituíam todos os computadores das clínicas.', 'Realizavam recall voluntário em 8 horas.'),
 ('NASA.', 'FCC.', 'OSHA.', 'FDA (Food and Drug Administration).', 'EPA.'),
 ('Não, Apesar de resalvas decidiram confiar no projeto e não realizar testes.', 'Sim, por uma equipe de hackers especializados.', 'Não, Porém tomaram o maior cuidado possível para evitar problemas futuros .', 'Não, os testes ftware foram mínimos e não houve validação independente.', 'Sim, por auditores do governo canadense.'),
-('Circuitos de Monitoramento de Dosagem Independentes e Automação por alavanca.', 'Travas Físicas de Segurança,  A Operação Stand-Alone  e Circuitos de Monitoramento de Dosagem Independentes', ' A Operação Stand-Alone , Travas Físicas de Segurança e Utilização de IA no processo de tratamento.', 'Não foram descartadas nenhuma ideia antes do projeto final', ' A Operação Stand-Alone '),
+('Circuitos de Monitoramento de Dosagem Independentes e Automação por alavanca.', 'Travas Físicas de Segurança,  A Operação Stand-Alone  e Circuitos de Monitoramento de Dosagem Independentes', ' A Operação Stand-Alone , Travas Físicas de Segurança e Utilização de IA no processo de tratamento.', 'Não foram descartadas nenhuma ideia antes do projeto final', ' A Operação Stand-Alone '),lllll
 ('Um bug que faz o processador rodar com overclock.', 'Um vírus que acelera o consumo de memória RAM.', 'Variáveis Compartilhadas sem Exclusão Mútua, O Erro do Incremento de Flags e Efeito do "Rollover".', 'nenhuma das alternativas.', 'Um conflito de endereçamento IP na rede local.'),
 ('Absorver os elétrons para convertê-los em um feixe de fótons (Raio-X).', 'Servir de espelho para alinhar o laser visível.', 'Resfriar os magnéticos de curvamento.', 'Medir a temperatura ambiente do bunker.', 'Filtrar os raios gama indesejados.'),
 ('Sim, após o ocorrido fizeram mudanças no softwer e continuou sendo vendido por mais alguns anos', 'Sim, mas apenas para clínicas veterinárias.', 'Sim, com desconto de 50% em peças.', 'Sim, sob nova marca comercial.', 'Não, sofreu suspensão e recall até que modificações fossem implementadas.'),
@@ -477,10 +477,18 @@ WHERE id IN (
     'fact-096', 'fact-097', 'fact-098', 'fact-099', 'fact-100'
 );
 
+--adicionando que o nome é unico e não pode ser repetido
+ALTER TABLE cadastro_usuario 
+ADD CONSTRAINT cadastro_usuario_key_unique UNIQUE (nome);
+
 -- Sincroniza sequências quando os dados são carregados com IDs explícitos.
 SELECT setval(pg_get_serial_sequence('fonte','id'), COALESCE((SELECT MAX(id) FROM fonte),1));
 SELECT setval(pg_get_serial_sequence('opcao_questoes','id_opcao'), COALESCE((SELECT MAX(id_opcao) FROM opcao_questoes),1));
+
+--ver as perguntas de cada dificuldade
 SELECT * FROM questoes WHERE dificuldade_nivel = 'facil';
+
+--ver quantas perguntas tem cada dificuldade
 SELECT 
     dificuldade_nivel AS dificuldade, 
     COUNT(*) AS total_perguntas
