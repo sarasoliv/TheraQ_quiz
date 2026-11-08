@@ -73,7 +73,7 @@ async function carregarPerguntasDoBanco() {
       String(item.resposta_correta || '').toUpperCase().trim()
     ),
 
-    explanation: item.justificativa_pergunta ||
+    explanation: item.justificativa_resposta ||
       'Justificativa não cadastrada.',
 
     source: item.referencia || 'Fonte não cadastrada',
