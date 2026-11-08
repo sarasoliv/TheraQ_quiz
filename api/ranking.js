@@ -18,40 +18,29 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // GET: Busca os top 10 maiores pontuações
+  // GET: Busca os top maiores pontuações na tabela correta do Supabase
   if (req.method === 'GET') {
     try {
       const { data, error } = await supabase
-        .from('ranking')
-        .select('*')
-        .order('pontuacao', { ascending: false })
-        .limit(10);
+        .from('tabela_ranking')
+        .select('nome_jogador, pontuacao_jogador, total_acertos, data_jogado')
+        .order('pontuacao_jogador', { ascending: false })
+        .order('data_jogado', { ascending: true })
+        .limit(8);
 
       if (error) throw error;
 
-      return res.status(200).json(data);
+      // Mapeia para o formato esperado pelo front-end (nickname e score)
+      const formatted = (data || []).map(item => ({
+        nickname: item.nome_jogador,
+        score: item.pontuacao_jogador,
+        total_acertos: item.total_acertos,
+        data_jogado: item.data_jogado
+      }));
+
+      return res.status(200).json(formatted);
     } catch (error) {
-      return res.status(500).json({ error: error.message });
-    }
-  }
-
-  // POST: Salva uma nova pontuação
-  if (req.method === 'POST') {
-    const { nome, pontuacao } = req.body;
-
-    if (!nome || pontuacao === undefined) {
-      return res.status(400).json({ error: 'Nome e pontuação são obrigatórios.' });
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('ranking')
-        .insert([{ nome, pontuacao }]);
-
-      if (error) throw error;
-
-      return res.status(201).json({ success: true, data });
-    } catch (error) {
+      console.error("Erro no ranking:", error.message);
       return res.status(500).json({ error: error.message });
     }
   }
