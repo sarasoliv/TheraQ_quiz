@@ -2,7 +2,6 @@ const { Pool } = require("pg");
 let pool;
 
 module.exports = async function handler(req, res) {
-  // Configuração de CORS para permitir requisições do frontend
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -29,6 +28,8 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'O nome do usuário é obrigatório.' });
   }
 
+  const nomeFormatado = nome_usuario.trim().slice(0, 50);
+
   try {
     pool ||= new Pool({
       connectionString: process.env.DATABASE_URL,
@@ -36,25 +37,25 @@ module.exports = async function handler(req, res) {
     });
 
     const client = await pool.connect();
-    
     try {
       await client.query("BEGIN");
 
-      // 1. Insere ou atualiza o usuário no banco
       const resUser = await client.query(
-        "INSERT INTO cadastro_usuario (nome) VALUES ($1) ON CONFLICT (nome) DO UPDATE SET nome = EXCLUDED.nome RETURNING id_usuario",
-        [nome_usuario.trim().slice(0, 50)]
+        `INSERT INTO cadastro_usuario (nome) 
+         VALUES ($1) 
+         ON CONFLICT (nome) 
+         DO UPDATE SET nome = EXCLUDED.nome 
+         RETURNING id_usuario`,
+        [nomeFormatado]
       );
 
       const usuarioId = resUser.rows[0].id_usuario;
 
-      // 2. Insere a pontuação final no ranking
       await client.query(
         "INSERT INTO tabela_ranking (usuario_id, nome_jogador, pontuacao_jogador, total_acertos) VALUES ($1, $2, $3, $4)",
-        [usuarioId, nome_usuario.trim().slice(0, 50), Number(pontuacao_final || 0), Number(total_acertos || 0)]
+        [usuarioId, nomeFormatado, Number(pontuacao_final), Number(total_acertos)]
       );
 
-      // 3. Insere o histórico de questões respondidas no envio final
       if (Array.isArray(questoes_respondidas) && questoes_respondidas.length > 0) {
         for (const q of questoes_respondidas) {
           if (q.questao_id && q.resposta_usuario !== undefined) {
@@ -68,15 +69,14 @@ module.exports = async function handler(req, res) {
       }
 
       await client.query("COMMIT");
-      return res.status(201).json({ success: true, saved: true });
-
+      client.release();
     } catch (err) {
       await client.query("ROLLBACK");
+      client.release();
       throw err;
-    } finally {
-      client.release(); // Garante que a conexão do pool é devolvida mesmo em caso de erro
     }
 
+    return res.status(201).json({ success: true, saved: true });
   } catch (error) {
     console.error('Erro ao salvar no banco:', error.message);
     return res.status(500).json({ error: error.message });
