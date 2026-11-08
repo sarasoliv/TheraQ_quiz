@@ -62,33 +62,36 @@ async function carregarPerguntasDoBanco() {
       throw new Error(`Nenhuma pergunta encontrada para o nível "${dificuldadeEscolhida}".`);
     }
 
-    // Mapeia e normaliza os dados vindos da API
+    // Mapeia e normaliza os dados vindos da API com garantia da explicação e fonte
     const availableQuestions = dados
-      .map((item) => ({
-        id: item.id,
-        question: item.enunciado,
-        options: item.alternativas,
-        correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta || '').toUpperCase()),
-        explanation: item.justificativa_resposta || item.explicacao || `Fonte: ${item.referencia || 'material de referência'}.`,
-        difficulty: String(item.dificuldade_nivel || '')
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .toLowerCase()
-          .trim()
-      }))
+      .map((item) => {
+        const justificativa = item.justificativa_resposta || item.explicacao || '';
+        const referencia = item.referencia ? `Fonte: ${item.referencia}.` : 'Fonte: Material de referência oficial do TheraQ.';
+        const textoExplicacao = justificativa ? `${justificativa} (${referencia})` : referencia;
+
+        return {
+          id: item.id,
+          question: item.enunciado,
+          options: item.alternativas,
+          correctIndex: ['A', 'B', 'C', 'D', 'E'].indexOf(String(item.resposta_correta || '').toUpperCase()),
+          explanation: textoExplicacao,
+          difficulty: String(item.dificuldade_nivel || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .trim()
+        };
+      })
       .filter((item) => item.question && item.options.length >= 2 && item.correctIndex >= 0);
 
-    // 🔒 BLOQUEIO ABSOLUTO: Garante de forma estrita que NENHUMA pergunta de outro nível passe
     const perguntasDoNivelExato = availableQuestions.filter((item) => {
       return item.difficulty === dificuldadeEscolhida;
     });
 
-    // Valida se o bloco atual tem o mínimo necessário (exatamente 10 perguntas)
     if (perguntasDoNivelExato.length < 10) {
       throw new Error(`O nível "${dificuldadeEscolhida}" possui apenas ${perguntasDoNivelExato.length} perguntas válidas. São necessárias pelo menos 10.`);
     }
 
-    // Sorteia estritamente 10 perguntas únicas e exclusivas do respectivo nível
     questions = window.TheraQQuizLogic?.pickRandomQuestions
       ? window.TheraQQuizLogic.pickRandomQuestions(perguntasDoNivelExato, 10)
       : perguntasDoNivelExato.sort(() => Math.random() - 0.5).slice(0, 10);
@@ -114,28 +117,14 @@ const state = {
   answered: false,
   playerName: '',
   score: 0,
-  userAnswers: []
+  userAnswers: [],
+  isSubmitting: false // Trava de segurança contra envios triplicados
 };
 
 const answerAudio = {
   correct: new Audio('./sounds/acerto.mp3'),
   wrong: new Audio('./sounds/errou.mp3')
 };
-
-const MAX_QUIZ_QUESTIONS = 10;
-
-function getSelectedDifficulty() {
-  return normalizeDifficulty(els.difficultySelect?.value || 'medio');
-}
-
-function shuffleQuestions(items) {
-  const shuffled = [...items];
-  for (let i = shuffled.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
-}
 
 function getAudioVolume() {
   const value = Number(els.volumeControl?.value ?? 0.7);
@@ -173,7 +162,6 @@ const updateTopbar = () => {
 // ==========================================================
 // Navegação entre telas
 // ==========================================================
-
 function showScreen(screenName) {
   Object.entries({ intro: els.introScreen, quiz: els.quizScreen, final: els.finalScreen })
     .forEach(([name, el]) => el.classList.toggle('active', name === screenName));
@@ -223,7 +211,7 @@ async function fetchGlobalRanking() {
       .map(normalizeRankingEntry)
       .filter(Boolean);
   } catch (error) {
-    console.warn('Não foi possível carregar o ranking global. Usando cache local apenas:', error);
+    console.warn('Não foi possível carregar o ranking global. Usando cache local:', error);
     return [];
   }
 }
@@ -312,9 +300,6 @@ function renderQuestion() {
   });
 }
 
-// ==========================================================
-// Feedback da resposta e explicação
-// ==========================================================
 function showAnswerFeedback() {
   const question = questions[state.currentQuestionIndex];
   document.querySelectorAll('.option-item').forEach((item, index) => {
@@ -334,6 +319,7 @@ function showAnswerFeedback() {
     }
   });
 
+  // Restaura a exibição correta da justificativa e fonte vinda do banco
   els.explanationText.textContent = question.explanation;
   els.explanationBox.classList.remove('hidden');
   els.confirmButton.textContent = state.currentQuestionIndex === questions.length - 1 ? 'Ver resultado' : 'Próxima questão';
@@ -360,6 +346,10 @@ function updateGlobalRanking() {
 }
 
 async function finishQuiz() {
+  // Trava de segurança para impedir requisições duplicadas (envios triplicados)
+  if (state.isSubmitting) return;
+  state.isSubmitting = true;
+
   updateGlobalRanking();
 
   try {
@@ -379,22 +369,20 @@ async function finishQuiz() {
       if (response.status === 409 || (data.error && data.error.includes('já está em uso'))) {
         alert(`⚠️ O nome "${state.playerName}" já foi registrado no banco de dados por outro jogador!`);
       }
-      throw new Error(data.error || `status ${response.status}`);
     }
 
     await renderSidebarRanking();
   } catch (error) {
     console.error('Não foi possível salvar o resultado no banco:', error);
     renderSidebarRanking();
+  } finally {
+    state.isSubmitting = false; // Libera após concluir
   }
 
   els.finalScore.textContent = `${state.score} / ${questions.length}`;
   showScreen('final');
 }
 
-// ==========================================================
-// Fluxo do quiz com Consulta Direta ao Banco no Supabase
-// ==========================================================
 function nextStep() {
   if (!state.answered) {
     alert('Selecione uma alternativa antes de confirmar.');
@@ -426,30 +414,14 @@ async function startQuiz() {
   }
 
   els.startQuizButton.disabled = true;
-  els.startQuizButton.textContent = 'Verificando nome no banco...';
+  els.startQuizButton.textContent = 'Verificando nome...';
 
   try {
-    // Consulta direta à API do backend que faz SELECT na tabela cadastro_usuario
     const resposta = await fetch(`/api/validar-nome?nome=${encodeURIComponent(nameInput)}`);
     if (resposta.ok) {
       const resultado = await resposta.json();
       if (resultado.existe) {
-        alert(`⚠️ O nickname "${nameInput}" já está cadastrado no banco de dados por outro jogador!
-Por favor, digite um nome diferente para poder jogar.`);
-        els.playerNameInput.focus();
-        els.playerNameInput.select();
-        els.startQuizButton.disabled = false;
-        els.startQuizButton.textContent = 'Começar quiz';
-        return; // BLOQUEIA O QUIZ ABSOLUTAMENTE
-      }
-    } else {
-      // Fallback local se a API validar-nome ainda não estiver no ar
-      const globalRanking = await fetchGlobalRanking();
-      const localRanking = getRanking().map(normalizeRankingEntry).filter(Boolean);
-      const todosOsNomes = [...globalRanking, ...localRanking];
-      if (todosOsNomes.some((item) => item.nickname.toLowerCase() === nameInput.toLowerCase())) {
-        alert(`⚠️ O nickname "${nameInput}" já foi utilizado por outro jogador!
-Por favor, escolha um nome diferente para iniciar o quiz.`);
+        alert(`⚠️ O nickname "${nameInput}" já está cadastrado no banco de dados por outro jogador!\nPor favor, digite um nome diferente para poder jogar.`);
         els.playerNameInput.focus();
         els.playerNameInput.select();
         els.startQuizButton.disabled = false;
@@ -468,15 +440,21 @@ Por favor, escolha um nome diferente para iniciar o quiz.`);
   state.currentQuestionIndex = 0;
   state.score = 0;
   state.userAnswers = [];
+  state.isSubmitting = false;
   renderQuestion();
   showScreen('quiz');
 }
 
 // ==========================================================
-// Eventos e inicialização
+// Eventos e inicialização (Garantindo apenas 1 listener por evento)
 // ==========================================================
 els.difficultySelect.addEventListener('change', carregarPerguntasDoBanco);
-els.startQuizButton.addEventListener('click', startQuiz);
+
+// Remove event listeners duplicados antigos se existirem clonando o botão
+const novoBotaoConfirmar = els.confirmButton.cloneNode(true);
+els.confirmButton.parentNode.replaceChild(novoBotaoConfirmar, els.confirmButton);
+els.confirmButton = novoBotaoConfirmar;
+
 els.confirmButton.addEventListener('click', () => {
   if (state.selectedAnswerIndex === null) {
     alert('Selecione uma alternativa antes de confirmar.');
@@ -518,6 +496,7 @@ els.finalButton.addEventListener('click', () => {
   state.score = 0;
   state.userAnswers = [];
   state.playerName = '';
+  state.isSubmitting = false;
   renderSidebarRanking();
   showScreen('intro');
 });
