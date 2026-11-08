@@ -17,62 +17,33 @@ module.exports = async function handler(request, response) {
     const dificuldade = normalizarDificuldade(paramDificuldade);
 
     const queryText = `
-    SELECT
+      SELECT
         q.id,
         q.enunciado,
         q.resposta_correta,
         q.dificuldade_nivel,
-        q.justificativa_pergunta,
-
+        q.justificativa_resposta,
         f.referencia,
         f.url AS fonte_url,
-
         o.opcao_a,
         o.opcao_b,
         o.opcao_c,
         o.opcao_d,
         o.opcao_e
-
-    FROM questoes q
-
-    JOIN opcao_questoes o
-        ON o.id_opcao = q.opcao_id
-
-    LEFT JOIN fonte f
-        ON f.id = q.fonte_id
-
-    WHERE translate(
-        lower(trim(q.dificuldade_nivel)),
-        'áéíóúãõâêîôûàèìòùç',
-        'aeiouaoaeiouaeiouc'
-    ) =
-    translate(
-        lower(trim($1)),
-        'áéíóúãõâêîôûàèìòùç',
-        'aeiouaoaeiouaeiouc'
-    )
-
-    ORDER BY RANDOM()
-    LIMIT 10
-`;
+      FROM questoes q
+      JOIN opcao_questoes o ON o.id_opcao = q.opcao_id
+      LEFT JOIN fonte f ON f.id = q.fonte_id
+      WHERE translate(lower(trim(q.dificuldade_nivel)), 'áéíóúãõâêîôûàèìòùç', 'aeiouaoaeiouaeiouc') =
+            translate(lower(trim($1)), 'áéíóúãõâêîôûàèìòùç', 'aeiouaoaeiouaeiouc')
+      ORDER BY RANDOM()
+      LIMIT 10
+    `;
 
     const { rows } = await pool.query(queryText, [dificuldade]);
 
     const formattedRows = rows.map((q) => ({
-      id: q.id,
-      enunciado: q.enunciado,
-      resposta_correta: q.resposta_correta,
-      dificuldade_nivel: q.dificuldade_nivel,
-      justificativa: q.justificativa_resposta,
-      fonte: q.referencia,
-      fonte_url: q.fonte_url,
-      alternativas: [
-        q.opcao_a,
-        q.opcao_b,
-        q.opcao_c,
-        q.opcao_d,
-        q.opcao_e
-      ].filter(Boolean) // Remove opções nulas caso alguma pergunta tenha menos de 5 opções
+      ...q,
+      alternativas: [q.opcao_a, q.opcao_b, q.opcao_c, q.opcao_d, q.opcao_e]
     }));
 
     return response.status(200).json(formattedRows);
