@@ -876,11 +876,52 @@ h1, h2, h3, p { margin: 0; }
 @media (max-width: 760px) {
   body { padding: 22px 14px; }
   .topbar, .main-layout { padding-left: 18px; padding-right: 18px; }
-  .topbar { flex-direction: column; align-items: flex-start; }
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  .brand-block {
+    justify-content: center;
+  }
+  .brand-logo-image {
+    width: 130px;
+    height: auto;
+  }
+  .topbar-actions {
+    width: 100%;
+    justify-content: center;
+  }
+  .accessibility-panel {
+    width: 100%;
+    justify-content: center;
+  }
+  .accessibility-group {
+    justify-content: center;
+  }
+  .status-pill {
+    width: fit-content;
+    max-width: 100%;
+    align-self: center;
+  }
   .question-layout { grid-template-columns: 1fr; }
   .question-card, .intro-card, .final-card {
     padding-left: 18px;
     padding-right: 18px;
+  }
+  .question-card h2 {
+    min-height: auto;
+    margin-bottom: 16px;
+    font-size: clamp(1.6rem, 7vw, 2.3rem);
+  }
+  .explanation-box {
+    padding: 16px 14px;
+    min-height: 120px;
+  }
+  .question-source {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
   .button-stack { flex-direction: column; }
   .score-box { flex-direction: column; gap: 8px; }
