@@ -15,7 +15,7 @@ Também haverá um Banco de Dados destinado ao armazenamento do nome de usuário
 | :--- | :--- |
 | Armazena dados do usuário ao se cadastrar | Exclui os dados de cadastro |
 | Armazena credenciais de login | Guarda o Ranking por tempo limitado |
-| Guarda a pontuação do usuário | ---- |
+| Guarda a pontuação do usuário | Guarda quanto tempo durou cada rodada do quiz |
 | Ranqueia de forma decrescente a pontuação total do usuário | Guarda as perguntas e respostas do quiz por tempo limitado |
 | Armazena os dados de todas as questões cadastradas | Salva usernames iguais |
 
